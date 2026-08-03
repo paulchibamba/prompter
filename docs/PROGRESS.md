@@ -16,7 +16,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 
 ## Phase B — Reading works end to end
 
-- [ ] **Step 7** — Library screen
+- [x] **Step 7** — Library screen
 - [ ] **Step 8** — Editor screen
 - [ ] **Step 9** — Prompter surface (static)
 - [ ] **Step 10** — Scroll engine & transport ← *reading works end to end*
@@ -80,6 +80,14 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
   icon set in transitively, and the app shell needs it for the navigation back button.
 - **Step 6** — `TeleprompterTheme` was renamed `PrompterTheme`, matching the product name used everywhere
   else. Only `MainActivity` referenced it.
+- **Step 7** — `lifecycle-runtime-compose` was added to the version catalog, for
+  `collectAsStateWithLifecycle`.
+- **Step 7** — Import and Export appear in the menus and empty state but are **disabled** until the
+  import/export step wires them, so the menus do not change shape under the user later.
+- **Step 7** — the reorder handle uses the hamburger icon. The proper drag-handle glyph lives in
+  `material-icons-extended`, which is not worth its build cost for one icon.
+- **Step 7** — reordering is drag-only, so it is unreachable via TalkBack. The accessibility pass owns
+  fixing this; noted here so it is not forgotten.
 - **Step 2** — `docs/SPEC.md` illustrates the package layout under `com.paul.prompter`. The real package,
   fixed by the Android Studio scaffold in Step 1, is `com.paulchibamba.teleprompter` and stays that way;
   renaming it now buys nothing and risks breaking `applicationId`-sensitive tooling. Documented in
