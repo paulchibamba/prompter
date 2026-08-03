@@ -1,13 +1,21 @@
 package com.paulchibamba.teleprompter.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class LineStyle { OFF, LINE, ARROWS, BAND }
 
+@Serializable
 enum class OrientLock { FOLLOW_SENSOR, PORTRAIT, LANDSCAPE }
 
 /**
  * Where the text sits on the glass (docs/SPEC.md §4.2, §7). Margins are percentages so a preset
  * carries between devices of different sizes without re-tuning.
+ *
+ * Serialised into DataStore and into a preset's `layoutJson` column — see
+ * [TypographySettings] for why every property carries a default.
  */
+@Serializable
 data class LayoutSettings(
     val marginLeftPct: Float = 10f,
     val marginRightPct: Float = 10f,

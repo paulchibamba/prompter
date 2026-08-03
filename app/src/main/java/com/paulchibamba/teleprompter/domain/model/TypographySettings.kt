@@ -1,7 +1,11 @@
 package com.paulchibamba.teleprompter.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class PromptAlign { LEFT, CENTER }
 
+@Serializable
 enum class CaseMode { NONE, UPPER }
 
 /**
@@ -9,7 +13,13 @@ enum class CaseMode { NONE, UPPER }
  *
  * Colours are ARGB packed into a [Long] rather than a Compose `Color` so this stays a pure-Kotlin
  * model that unit tests can exercise without an Android runtime.
+ *
+ * `@Serializable` is what lets this block be stored verbatim in DataStore and in a preset's
+ * `typographyJson` column — see `com.paulchibamba.teleprompter.data.json.SettingsCodec`. Every
+ * property has a default, so a blob written by an older version decodes with the new fields at
+ * their defaults instead of failing.
  */
+@Serializable
 data class TypographySettings(
     val fontId: String = DEFAULT_FONT_ID,
     val customFontUri: String? = null,
@@ -41,6 +51,9 @@ data class TypographySettings(
 
     companion object {
         const val DEFAULT_FONT_ID = "lexend"
+
+        /** Bundled for low-vision reading (docs/SPEC.md §6.1); the "Bright room" preset uses it. */
+        const val ATKINSON_FONT_ID = "atkinson"
         const val CUSTOM_FONT_ID = "custom"
 
         const val MIN_SIZE_SP = 16f

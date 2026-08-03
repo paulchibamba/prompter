@@ -2,14 +2,25 @@ package com.paulchibamba.teleprompter
 
 import android.content.Context
 import com.paulchibamba.teleprompter.data.db.PrompterDatabase
+import com.paulchibamba.teleprompter.data.db.RoomPresetRepository
 import com.paulchibamba.teleprompter.data.db.RoomScriptRepository
+import com.paulchibamba.teleprompter.data.prefs.DataStoreSettingsRepository
+import com.paulchibamba.teleprompter.data.prefs.settingsDataStore
+import com.paulchibamba.teleprompter.domain.repository.PresetRepository
 import com.paulchibamba.teleprompter.domain.repository.ScriptRepository
+import com.paulchibamba.teleprompter.domain.repository.SettingsRepository
+import com.paulchibamba.teleprompter.domain.usecase.ApplyPreset
+import com.paulchibamba.teleprompter.domain.usecase.DeletePreset
 import com.paulchibamba.teleprompter.domain.usecase.DeleteScript
 import com.paulchibamba.teleprompter.domain.usecase.DuplicateScript
+import com.paulchibamba.teleprompter.domain.usecase.GetPreset
 import com.paulchibamba.teleprompter.domain.usecase.GetScript
+import com.paulchibamba.teleprompter.domain.usecase.ObservePresets
 import com.paulchibamba.teleprompter.domain.usecase.ObserveScripts
 import com.paulchibamba.teleprompter.domain.usecase.ReorderScripts
 import com.paulchibamba.teleprompter.domain.usecase.RestoreScript
+import com.paulchibamba.teleprompter.domain.usecase.SaveCurrentSettingsAsPreset
+import com.paulchibamba.teleprompter.domain.usecase.SavePreset
 import com.paulchibamba.teleprompter.domain.usecase.SaveScript
 import com.paulchibamba.teleprompter.domain.usecase.SaveScrollPosition
 
@@ -28,6 +39,11 @@ class AppContainer(context: Context) {
     private val database: PrompterDatabase by lazy { PrompterDatabase.build(applicationContext) }
 
     val scriptRepository: ScriptRepository by lazy { RoomScriptRepository(database.scriptDao()) }
+    val presetRepository: PresetRepository by lazy { RoomPresetRepository(database.presetDao()) }
+
+    val settingsRepository: SettingsRepository by lazy {
+        DataStoreSettingsRepository(applicationContext.settingsDataStore)
+    }
 
     val observeScripts: ObserveScripts by lazy { ObserveScripts(scriptRepository) }
     val getScript: GetScript by lazy { GetScript(scriptRepository) }
@@ -37,4 +53,13 @@ class AppContainer(context: Context) {
     val duplicateScript: DuplicateScript by lazy { DuplicateScript(scriptRepository, saveScript) }
     val reorderScripts: ReorderScripts by lazy { ReorderScripts(scriptRepository) }
     val saveScrollPosition: SaveScrollPosition by lazy { SaveScrollPosition(scriptRepository) }
+
+    val observePresets: ObservePresets by lazy { ObservePresets(presetRepository) }
+    val getPreset: GetPreset by lazy { GetPreset(presetRepository) }
+    val savePreset: SavePreset by lazy { SavePreset(presetRepository) }
+    val deletePreset: DeletePreset by lazy { DeletePreset(presetRepository) }
+    val applyPreset: ApplyPreset by lazy { ApplyPreset(presetRepository, settingsRepository) }
+    val saveCurrentSettingsAsPreset: SaveCurrentSettingsAsPreset by lazy {
+        SaveCurrentSettingsAsPreset(settingsRepository, savePreset)
+    }
 }

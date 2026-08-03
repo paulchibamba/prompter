@@ -11,7 +11,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 - [x] **Step 2** — Build foundation & project hygiene
 - [x] **Step 3** — Domain models & pure logic
 - [x] **Step 4** — Script persistence
-- [ ] **Step 5** — Settings & preset persistence
+- [x] **Step 5** — Settings & preset persistence
 - [ ] **Step 6** — App shell: theme, navigation, DI wiring
 
 ## Phase B — Reading works end to end
@@ -114,3 +114,33 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 4** — Room schemas are exported to `app/schemas/` and committed, and an `AppContainer` +
   `PrompterApplication` were added at the root package (the spec's §2 layout does not name them). `MainActivity`
   is untouched — wiring ViewModels to the container is Step 6's job.
+- **Step 5** — Presets are a **Room** table, not DataStore. `docs/SPEC.md` §3.3 specifies a `PresetEntity`,
+  but `docs/ARCHITECTURE.md` listed presets under DataStore alongside settings; the spec wins, and it is also
+  the right call — presets are a list the user adds to and deletes from, and a script's `presetId` is a
+  reference to a row. `docs/ARCHITECTURE.md`'s persistence table is corrected to match. Settings themselves are
+  DataStore as planned.
+- **Step 5** — kotlinx.serialization was added, and the three settings models are `@Serializable`. Both
+  storage sites hold the same JSON (three DataStore keys for the global defaults, three columns for a preset),
+  so applying a preset and saving the defaults back as one are exact inverses. Annotating the domain models
+  does not breach the dependency rule — kotlinx.serialization is pure Kotlin, no Android — and the alternative
+  of mirror DTOs in `data` would be forty hand-maintained fields, where one forgotten line silently drops a
+  user's setting.
+- **Step 5** — A settings block is one JSON string rather than one DataStore key per field. Blocks are always
+  read and written whole, so per-field keys would only add thirty-odd names to keep in sync with the model.
+  The cost — one bad character reverts a whole block — is bounded by `SettingsCodec` never throwing: a corrupt,
+  older or out-of-range value degrades to the model default.
+- **Step 5** — The built-in presets carry **fixed ids** (1, 2, 3) and are seeded by
+  `RoomPresetRepository.ensureBuiltIns()` on first read or write, not by a `RoomDatabase.Callback` or by seed
+  SQL inside the migration. A script's `presetId` refers to a preset by id, so a built-in's id has to be the
+  same number on every install; and seeding on access is one implementation that covers a fresh install, this
+  migration, and a later step that adds a fourth built-in. Built-ins are read-only: deleting one is refused and
+  saving over one stores a copy, so the app can never end up with no presets.
+- **Step 5** — `PrompterDatabase` is version 2 with `MIGRATION_1_2` adding the `presets` table.
+  `PrompterDatabaseMigrationTest` builds a real v1 file by hand and opens it at v2 under Robolectric, rather
+  than using Room's `MigrationTestHelper`, which reads its schemas from instrumentation assets and would need
+  an emulator. Room validates the schema when it opens, so the test fails loudly if the migration's SQL ever
+  drifts from the exported schema.
+- **Step 5** — `ApplyPreset` and `SaveCurrentSettingsAsPreset` landed here rather than with presets management
+  in Step 18. They are the two operations that read settings and presets together, and writing them now is what
+  forced `SettingsRepository.setAll` to be a single atomic write — three separate writes would let the prompter
+  render a new type size against the old margins for a frame. The management *UI* remains Step 18's.
