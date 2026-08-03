@@ -24,7 +24,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 ## Phase C — Typography
 
 - [x] **Step 11** — Quick-settings sheet & type controls
-- [ ] **Step 12** — Font system
+- [x] **Step 12** — Font system
 - [ ] **Step 13** — Colour, contrast & marker styling
 
 ## Phase D — Layout for the glass
@@ -99,6 +99,15 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) is **not yet applied** by the prompter, which
   still reads the global settings. Presets can be assigned from the library but have no effect until the
   presets step wires them through.
+- **Step 12** — the imported custom font is **copied into app storage** rather than referenced by a
+  persisted URI as the spec suggests. A URI can be revoked and the file behind it deleted, moved, or on an
+  SD card that is not in the phone; losing a typeface between takes is worse than a few hundred kilobytes.
+  `TypographySettings.customFontUri` therefore holds the path of the copy.
+- **Step 12** — the font picker accepts any file type. Providers routinely report a `.ttf` as an octet
+  stream, and filtering on font MIME types hides the file the user is looking straight at.
+- **Step 12** — `FontVariation` needs `@OptIn(ExperimentalTextApi::class)`. It is the only way to drive a
+  variable font's `wght` axis; without it the system picks the nearest static instance and the weight
+  control appears to do nothing.
 - **Step 11** — the sheet's height fraction goes on its *content*, not on `ModalBottomSheet` itself.
   Sizing the sheet container anchors it to the top of the screen with the script below it.
 - **Step 11** — `ModalBottomSheet` opens its own window, which brings the system bars back. The immersive

@@ -153,6 +153,8 @@ fun PrompterScreen(
         QuickSettingsSheet(
             typography = uiState.typography,
             onTypographyChanged = viewModel::updateTypography,
+            customFontFile = viewModel.importedFontFile(),
+            onCustomFontImported = viewModel::importCustomFont,
             onDismiss = { isQuickSettingsOpen = false },
         )
     }

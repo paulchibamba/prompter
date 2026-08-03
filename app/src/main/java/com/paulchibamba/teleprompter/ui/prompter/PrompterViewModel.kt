@@ -5,9 +5,11 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import android.net.Uri
 import androidx.navigation.toRoute
 import com.paulchibamba.teleprompter.domain.model.ScrollSettings
 import com.paulchibamba.teleprompter.domain.model.TypographySettings
+import com.paulchibamba.teleprompter.data.io.CustomFontStore
 import com.paulchibamba.teleprompter.domain.repository.SettingsRepository
 import com.paulchibamba.teleprompter.domain.text.ScriptParser
 import com.paulchibamba.teleprompter.domain.usecase.GetScript
@@ -35,6 +37,7 @@ class PrompterViewModel(
     private val scriptId: Long,
     private val getScript: GetScript,
     private val settingsRepository: SettingsRepository,
+    private val customFontStore: CustomFontStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PrompterUiState())
@@ -93,6 +96,25 @@ class PrompterViewModel(
 
     fun decreaseFontSize() = stepFontSize(stepSp = -FONT_STEP_SP)
 
+    /** The imported face, if there is one and it is still readable. */
+    fun importedFontFile() = customFontStore.importedFont()
+
+    /**
+     * Copies the picked font into app storage and switches to it. A file that cannot be read is
+     * ignored rather than selected — better to stay on a working face than show nothing.
+     */
+    fun importCustomFont(uri: String) {
+        viewModelScope.launch {
+            val stored = customFontStore.importFrom(Uri.parse(uri)) ?: return@launch
+            updateTypography(
+                _uiState.value.typography.copy(
+                    fontId = TypographySettings.CUSTOM_FONT_ID,
+                    customFontUri = stored.path,
+                ),
+            )
+        }
+    }
+
     private fun stepSpeed(steps: Int) {
         val current = _uiState.value.scroll
         updateScroll(current.copy(speedWpm = current.steppedWpm(steps)))
@@ -149,6 +171,7 @@ class PrompterViewModel(
                     scriptId = route.scriptId,
                     getScript = container.getScript,
                     settingsRepository = container.settingsRepository,
+                    customFontStore = container.customFontStore,
                 )
             }
         }

@@ -76,9 +76,10 @@ Run the checks:
 Source code is licensed under the [Apache License 2.0](LICENSE).
 
 Bundled typefaces remain under their own SIL Open Font License, with each family's `OFL.txt` vendored
-alongside it in `third_party/fonts/`:
+alongside it in `third_party/fonts/`. All four are variable fonts, so weight is continuous rather than a
+jump between cut sizes:
 
 - **Lexend** — designed to reduce visual stress
-- **Atkinson Hyperlegible** — maximally distinct letterforms, by the Braille Institute
+- **Atkinson Hyperlegible Next** — maximally distinct letterforms, by the Braille Institute
 - **Inter** — neutral, tall x-height, very even colour
 - **Newsreader** — a serif option, since some readers track lines better with serifs

@@ -2,6 +2,7 @@ package com.paulchibamba.teleprompter
 
 import android.content.Context
 import com.paulchibamba.teleprompter.data.db.PrompterDatabase
+import com.paulchibamba.teleprompter.data.io.CustomFontStore
 import com.paulchibamba.teleprompter.data.db.RoomPresetRepository
 import com.paulchibamba.teleprompter.data.db.RoomScriptRepository
 import com.paulchibamba.teleprompter.data.prefs.DataStoreSettingsRepository
@@ -40,6 +41,8 @@ class AppContainer(context: Context) {
 
     val scriptRepository: ScriptRepository by lazy { RoomScriptRepository(database.scriptDao()) }
     val presetRepository: PresetRepository by lazy { RoomPresetRepository(database.presetDao()) }
+
+    val customFontStore: CustomFontStore by lazy { CustomFontStore(applicationContext) }
 
     val settingsRepository: SettingsRepository by lazy {
         DataStoreSettingsRepository(applicationContext.settingsDataStore)

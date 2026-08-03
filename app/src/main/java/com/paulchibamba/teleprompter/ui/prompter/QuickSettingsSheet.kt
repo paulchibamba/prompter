@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.paulchibamba.teleprompter.domain.model.TypographySettings
+import java.io.File
 
 /**
  * The prompter's primary settings surface (docs/SPEC.md §5.3).
@@ -37,6 +38,8 @@ import com.paulchibamba.teleprompter.domain.model.TypographySettings
 fun QuickSettingsSheet(
     typography: TypographySettings,
     onTypographyChanged: (TypographySettings) -> Unit,
+    customFontFile: File?,
+    onCustomFontImported: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(QuickSettingsTab.TYPE) }
@@ -70,6 +73,8 @@ fun QuickSettingsSheet(
                     QuickSettingsTab.TYPE -> TypeSettingsTab(
                         typography = typography,
                         onTypographyChanged = onTypographyChanged,
+                        customFontFile = customFontFile,
+                        onCustomFontImported = onCustomFontImported,
                     )
 
                     QuickSettingsTab.LAYOUT -> NotYetBuiltMessage(
