@@ -18,7 +18,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 
 - [x] **Step 7** — Library screen
 - [x] **Step 8** — Editor screen
-- [ ] **Step 9** — Prompter surface (static)
+- [x] **Step 9** — Prompter surface (static)
 - [ ] **Step 10** — Scroll engine & transport ← *reading works end to end*
 
 ## Phase C — Typography
@@ -94,6 +94,16 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
   deliberate trade: inserting a marker has to move the caret, and the alternative is threading text and
   selection through as two values that must never disagree.
 - **Step 8** — Import is present but disabled in the editor's bottom bar, matching the library.
+- **Step 9** — `ui/theme/PrompterFonts.kt` is a seam that currently resolves every `fontId` to the device
+  font. The bundled families arrive with the font step; nothing downstream changes when they do.
+- **Step 9** — a script's assigned preset (`Script.presetId`) is **not yet applied** by the prompter, which
+  still reads the global settings. Presets can be assigned from the library but have no effect until the
+  presets step wires them through.
+- **Step 9** — the first and last lines settle about 4.5% of screen height *below* the nominal reading-line
+  percentage, because `Trim.None` keeps half-leading above the first line of each text block. The offset is
+  identical at both ends, so start and end of a script line up with each other — which is the property that
+  matters. The reading-line indicator must be drawn on the same basis, or it will sit visibly above the text
+  it is supposed to mark.
 - **Step 2** — `docs/SPEC.md` illustrates the package layout under `com.paul.prompter`. The real package,
   fixed by the Android Studio scaffold in Step 1, is `com.paulchibamba.teleprompter` and stays that way;
   renaming it now buys nothing and risks breaking `applicationId`-sensitive tooling. Documented in
