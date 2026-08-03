@@ -9,7 +9,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 
 - [x] **Step 1** — Git, GitHub & open source scaffolding
 - [x] **Step 2** — Build foundation & project hygiene
-- [ ] **Step 3** — Domain models & pure logic
+- [x] **Step 3** — Domain models & pure logic
 - [ ] **Step 4** — Script persistence
 - [ ] **Step 5** — Settings & preset persistence
 - [ ] **Step 6** — App shell: theme, navigation, DI wiring
@@ -86,3 +86,17 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 2** — The CI check for zero permissions previously grepped the *source* manifest
   (`app/src/main/AndroidManifest.xml`). It's replaced by the `:app:verifyNoInternetPermission` Gradle task,
   which inspects the *merged* manifest so a permission pulled in transitively by a dependency is caught too.
+- **Step 3** — Settings validation is done with a `coerced()` method on each settings block rather than
+  `require` in an `init`. Values arrive from DataStore, imported presets and remote key presses, none of which
+  are guaranteed in range; a stale or corrupt stored value should degrade to the nearest sane one, never crash
+  the prompter mid-read. Ranges live as named constants on each companion so the UI sliders in Steps 11–17
+  bind to the same numbers the tests assert.
+- **Step 3** — A `domain.model.Script` was added, which `docs/SPEC.md` §3.1 only shows as a Room entity. The
+  entity lands in Step 4 and maps onto this; keeping a domain type means nothing outside `data.db` depends on
+  Room, and the pure logic here stays JVM-testable.
+- **Step 3** — `ScriptParser.wordCount` excludes `---` section-break lines (nobody reads them aloud) and counts
+  a marker heading's label but not its hashes. The spec does not say which way to count; this is the reading
+  that makes the library's duration estimate honest.
+- **Step 3** — `nextAfter`/`previousBefore` marker navigation helpers landed here rather than in Step 23. They
+  are two pure list functions over the markers this step already parses, and Step 21's remote actions need
+  them before the scrubber exists.

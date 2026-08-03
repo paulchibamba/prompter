@@ -26,6 +26,7 @@ com.paulchibamba.teleprompter
 ├── domain
 │   ├── model       Script, Marker, TypographySettings, LayoutSettings,
 │   │               ScrollSettings, KeyBinding, PromptAction, Preset
+│   ├── text        ScriptParser (markers, section breaks, word count)
 │   └── scroll      ScrollEngine, WpmCalculator
 ├── input
 │   ├── RemoteKeyRouter      dispatchKeyEvent → PromptAction
