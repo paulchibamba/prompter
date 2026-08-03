@@ -10,7 +10,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 - [x] **Step 1** — Git, GitHub & open source scaffolding
 - [x] **Step 2** — Build foundation & project hygiene
 - [x] **Step 3** — Domain models & pure logic
-- [ ] **Step 4** — Script persistence
+- [x] **Step 4** — Script persistence
 - [ ] **Step 5** — Settings & preset persistence
 - [ ] **Step 6** — App shell: theme, navigation, DI wiring
 
@@ -100,3 +100,17 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 3** — `nextAfter`/`previousBefore` marker navigation helpers landed here rather than in Step 23. They
   are two pure list functions over the markers this step already parses, and Step 21's remote actions need
   them before the scrubber exists.
+- **Step 4** — Room is **2.7.2**, not the 2.6.1 pinned in `docs/SPEC.md` §14. Room 2.6.1's annotation
+  processor fails under KSP2 (`unexpected jvm signature V`) with Kotlin 2.2, and KSP2 is the default in the
+  KSP version this project already uses. Upgrading Room is the fix; downgrading KSP would trade a supported
+  toolchain for a pinned number in the spec.
+- **Step 4** — The `ScriptRepository` *interface* lives in `domain/repository`, with `RoomScriptRepository`
+  implementing it in `data/db`. `docs/SPEC.md` §2 lists only a repository under `data`; splitting it is what
+  lets the use-cases stay inside the dependency rule (`domain` importing nothing from `data`) and be tested
+  against an in-memory fake instead of an emulator.
+- **Step 4** — DAO tests run on the JVM under **Robolectric** against an in-memory SQLite database, rather
+  than as instrumented tests. CI has no emulator, and untested SQL is exactly the kind of thing that is only
+  found to be wrong after it ships. `@Config(sdk = [34])` pins a Robolectric-supported API level.
+- **Step 4** — Room schemas are exported to `app/schemas/` and committed, and an `AppContainer` +
+  `PrompterApplication` were added at the root package (the spec's §2 layout does not name them). `MainActivity`
+  is untouched — wiring ViewModels to the container is Step 6's job.
