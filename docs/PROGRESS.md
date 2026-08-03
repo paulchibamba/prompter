@@ -8,7 +8,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 ## Phase A — Foundation
 
 - [x] **Step 1** — Git, GitHub & open source scaffolding
-- [ ] **Step 2** — Build foundation & project hygiene
+- [x] **Step 2** — Build foundation & project hygiene
 - [ ] **Step 3** — Domain models & pure logic
 - [ ] **Step 4** — Script persistence
 - [ ] **Step 5** — Settings & preset persistence
@@ -72,3 +72,17 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 1** — `docs/PROGRESS.md` and `docs/BUILD_PLAN.md` were created in Step 1 rather than Step 2, since
   Step 1 needs somewhere to tick itself off and the README links to both. `docs/ARCHITECTURE.md` remains
   scheduled for Step 2.
+- **Step 2** — `docs/SPEC.md` illustrates the package layout under `com.paul.prompter`. The real package,
+  fixed by the Android Studio scaffold in Step 1, is `com.paulchibamba.teleprompter` and stays that way;
+  renaming it now buys nothing and risks breaking `applicationId`-sensitive tooling. Documented in
+  `docs/ARCHITECTURE.md`.
+- **Step 2** — The manual `AppContainer` for DI is deferred to Step 4, when Room actually lands and there is
+  something for it to hold. `docs/ARCHITECTURE.md` describes the intended shape now so later steps build
+  against a documented plan rather than inventing one mid-step.
+- **Step 2** — `AndroidManifest.xml` had `android:allowBackup="true"` plus `dataExtractionRules` and
+  `fullBackupContent` from the Android Studio template, contradicting requirement P1 in `docs/SPEC.md` §0.
+  Set to `allowBackup="false"` and removed the now-unused `xml/backup_rules.xml` and
+  `xml/data_extraction_rules.xml` resources, matching the spec's manifest skeleton (§14).
+- **Step 2** — The CI check for zero permissions previously grepped the *source* manifest
+  (`app/src/main/AndroidManifest.xml`). It's replaced by the `:app:verifyNoInternetPermission` Gradle task,
+  which inspects the *merged* manifest so a permission pulled in transitively by a dependency is caught too.

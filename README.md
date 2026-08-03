@@ -68,7 +68,7 @@ Run the checks:
 |---|---|
 | [`docs/SPEC.md`](docs/SPEC.md) | The full specification — every setting, screen, and acceptance criterion |
 | [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) | The 25-step staged build plan |
-| `docs/ARCHITECTURE.md` | Layers, packages, dependency rule, code style *(arrives in Step 2)* |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layers, packages, dependency rule, code style |
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Which steps are done, and any deviations from the plan |
 
 ## Licence
