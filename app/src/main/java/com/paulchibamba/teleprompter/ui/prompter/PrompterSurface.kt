@@ -33,6 +33,7 @@ import com.paulchibamba.teleprompter.domain.model.LayoutSettings
 import com.paulchibamba.teleprompter.domain.model.PromptAlign
 import com.paulchibamba.teleprompter.domain.model.TypographySettings
 import com.paulchibamba.teleprompter.ui.theme.PrompterFonts
+import java.io.File
 
 /**
  * The scrolling text itself (docs/SPEC.md §6, §8.3).
@@ -158,7 +159,10 @@ fun rememberPrompterTextStyleFor(typography: TypographySettings): TextStyle =
         TextStyle(
             color = Color(typography.textColor),
             fontSize = typography.sizeSp.sp,
-            fontFamily = PrompterFonts.familyFor(typography.fontId),
+            fontFamily = PrompterFonts.familyFor(
+                fontId = typography.fontId,
+                customFontFile = typography.customFontUri?.let(::File),
+            ),
             fontWeight = FontWeight(typography.weight),
             lineHeight = (typography.sizeSp * typography.lineHeightMul).sp,
             letterSpacing = typography.letterSpacingEm.em,

@@ -11,6 +11,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -19,6 +23,7 @@ import com.paulchibamba.teleprompter.domain.model.PromptAlign
 import com.paulchibamba.teleprompter.domain.model.TypographySettings
 import com.paulchibamba.teleprompter.ui.components.LabelledSlider
 import com.paulchibamba.teleprompter.ui.components.SegmentedOptionRow
+import java.io.File
 import kotlin.math.roundToInt
 
 /**
@@ -31,12 +36,21 @@ import kotlin.math.roundToInt
 fun TypeSettingsTab(
     typography: TypographySettings,
     onTypographyChanged: (TypographySettings) -> Unit,
+    customFontFile: File?,
+    onCustomFontImported: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var isPickingFont by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        FontPickerRow(
+            fontId = typography.fontId,
+            customFontFile = customFontFile,
+            onClick = { isPickingFont = true },
+        )
         SizeSlider(typography, onTypographyChanged)
         LineHeightSlider(typography, onTypographyChanged)
         TrackingSlider(typography, onTypographyChanged)
@@ -44,6 +58,16 @@ fun TypeSettingsTab(
         WeightPicker(typography, onTypographyChanged)
         AlignmentPicker(typography, onTypographyChanged)
         CasePicker(typography, onTypographyChanged)
+    }
+
+    if (isPickingFont) {
+        FontPickerDialog(
+            selectedFontId = typography.fontId,
+            customFontFile = customFontFile,
+            onFontSelected = { onTypographyChanged(typography.copy(fontId = it)) },
+            onCustomFontImported = onCustomFontImported,
+            onDismiss = { isPickingFont = false },
+        )
     }
 }
 
