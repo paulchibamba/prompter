@@ -1,0 +1,14 @@
+*.iml
+.gradle
+/local.properties
+local.properties
+.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+.kotlin
+
+# Local agent working notes. Not part of the published project.
+CLAUDE.md
