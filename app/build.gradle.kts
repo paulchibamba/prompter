@@ -26,6 +26,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Room writes the schema of every version to app/schemas/. Committing those files is what
+        // makes a future migration reviewable and testable against the real previous schema.
+        ksp {
+            arg("room.schemaLocation", "$projectDir/schemas")
+        }
     }
 
     buildTypes {
@@ -41,6 +47,13 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    testOptions {
+        unitTests {
+            // Robolectric runs the Room DAO tests against a real SQLite database on the JVM, so CI
+            // covers them without an emulator.
+            isIncludeAndroidResources = true
+        }
     }
 }
 
@@ -108,7 +121,12 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -19,14 +19,18 @@ Base package: `com.paulchibamba.teleprompter`.
 
 ```
 com.paulchibamba.teleprompter
+├── AppContainer            manual DI graph, held by PrompterApplication
 ├── data
-│   ├── db          Room: PrompterDatabase, ScriptDao, ScriptEntity
+│   ├── db          Room: PrompterDatabase, ScriptDao, ScriptEntity,
+│   │               RoomScriptRepository
 │   ├── prefs       DataStore: SettingsRepository, PresetRepository
 │   └── io          ImportExport (SAF, charset detection)
 ├── domain
 │   ├── model       Script, Marker, TypographySettings, LayoutSettings,
 │   │               ScrollSettings, KeyBinding, PromptAction, Preset
 │   ├── text        ScriptParser (markers, section breaks, word count)
+│   ├── repository  ScriptRepository (interface; implemented in data)
+│   ├── usecase     ScriptUseCases (save, delete/restore, duplicate, reorder…)
 │   └── scroll      ScrollEngine, WpmCalculator
 ├── input
 │   ├── RemoteKeyRouter      dispatchKeyEvent → PromptAction
@@ -81,6 +85,11 @@ not an arbitrary `Activity` — decides what a keypress means.
 
 Both are wrapped by repositories in `data`; nothing outside `data` talks to `RoomDatabase` or
 `DataStore<Preferences>` directly.
+
+The repository *interfaces* live in `domain/repository` and their implementations in `data`, so the
+use-cases in `domain/usecase` depend on nothing from `data` and can be tested against an in-memory fake.
+Room's schemas are exported to `app/schemas/` and committed — that is what makes a future migration
+reviewable and testable against the real previous schema rather than a remembered one.
 
 ## No permissions
 
