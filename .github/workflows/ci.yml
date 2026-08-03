@@ -31,16 +31,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # Prompter declares no permissions at all. This check is the enforcement behind
-      # that claim in the README. Step 2 of the build plan replaces it with the
-      # verifyNoInternetPermission Gradle task, which inspects the *merged* manifest.
+      # Prompter declares no permissions at all (docs/SPEC.md §0, requirement P1). This task
+      # inspects the *merged* manifest, so a permission pulled in transitively by a dependency
+      # is caught too, not just one written directly into app/src/main/AndroidManifest.xml.
       - name: Verify no permissions are declared
-        run: |
-          if grep -n 'uses-permission' app/src/main/AndroidManifest.xml; then
-            echo "::error::AndroidManifest.xml declares a permission. Prompter must declare none."
-            exit 1
-          fi
-          echo "No permissions declared."
+        run: ./gradlew verifyNoInternetPermission --stacktrace
 
       - name: Assemble debug
         run: ./gradlew :app:assembleDebug --stacktrace
