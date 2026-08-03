@@ -17,7 +17,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 ## Phase B — Reading works end to end
 
 - [x] **Step 7** — Library screen
-- [ ] **Step 8** — Editor screen
+- [x] **Step 8** — Editor screen
 - [ ] **Step 9** — Prompter surface (static)
 - [ ] **Step 10** — Scroll engine & transport ← *reading works end to end*
 
@@ -88,6 +88,12 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
   `material-icons-extended`, which is not worth its build cost for one icon.
 - **Step 7** — reordering is drag-only, so it is unreachable via TalkBack. The accessibility pass owns
   fixing this; noted here so it is not forgotten.
+- **Step 8** — marker insertion lives in `domain/text/MarkerInsertion.kt` rather than in the editor, so it
+  is unit-testable. It is a pure text edit, and it now has 11 tests.
+- **Step 8** — `EditorUiState` holds a Compose `TextFieldValue`. A ViewModel holding a UI type is a
+  deliberate trade: inserting a marker has to move the caret, and the alternative is threading text and
+  selection through as two values that must never disagree.
+- **Step 8** — Import is present but disabled in the editor's bottom bar, matching the library.
 - **Step 2** — `docs/SPEC.md` illustrates the package layout under `com.paul.prompter`. The real package,
   fixed by the Android Studio scaffold in Step 1, is `com.paulchibamba.teleprompter` and stays that way;
   renaming it now buys nothing and risks breaking `applicationId`-sensitive tooling. Documented in
