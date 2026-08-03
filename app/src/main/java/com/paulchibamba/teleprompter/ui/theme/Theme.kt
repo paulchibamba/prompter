@@ -1,8 +1,8 @@
 package com.paulchibamba.teleprompter.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -11,48 +11,88 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+private val LightColors = lightColorScheme(
+    primary = AmberLight,
+    onPrimary = OnAmberLight,
+    primaryContainer = AmberContainerLight,
+    onPrimaryContainer = OnAmberContainerLight,
+    secondary = WarmNeutralLight,
+    onSecondary = OnWarmNeutralLight,
+    secondaryContainer = WarmNeutralContainerLight,
+    onSecondaryContainer = OnWarmNeutralContainerLight,
+    tertiary = SageLight,
+    onTertiary = OnSageLight,
+    tertiaryContainer = SageContainerLight,
+    onTertiaryContainer = OnSageContainerLight,
+    error = ErrorLight,
+    onError = OnErrorLight,
+    errorContainer = ErrorContainerLight,
+    onErrorContainer = OnErrorContainerLight,
+    background = SurfaceLight,
+    onBackground = OnSurfaceLight,
+    surface = SurfaceLight,
+    onSurface = OnSurfaceLight,
+    surfaceVariant = SurfaceVariantLight,
+    onSurfaceVariant = OnSurfaceVariantLight,
+    outline = OutlineLight,
+    outlineVariant = OutlineVariantLight,
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val DarkColors = darkColorScheme(
+    primary = AmberDark,
+    onPrimary = OnAmberDark,
+    primaryContainer = AmberContainerDark,
+    onPrimaryContainer = OnAmberContainerDark,
+    secondary = WarmNeutralDark,
+    onSecondary = OnWarmNeutralDark,
+    secondaryContainer = WarmNeutralContainerDark,
+    onSecondaryContainer = OnWarmNeutralContainerDark,
+    tertiary = SageDark,
+    onTertiary = OnSageDark,
+    tertiaryContainer = SageContainerDark,
+    onTertiaryContainer = OnSageContainerDark,
+    error = ErrorDark,
+    onError = OnErrorDark,
+    errorContainer = ErrorContainerDark,
+    onErrorContainer = OnErrorContainerDark,
+    background = SurfaceDark,
+    onBackground = OnSurfaceDark,
+    surface = SurfaceDark,
+    onSurface = OnSurfaceDark,
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = OnSurfaceVariantDark,
+    outline = OutlineDark,
+    outlineVariant = OutlineVariantDark,
 )
 
+/**
+ * The theme for the app's chrome — library, editor, settings, and the prompter's control surfaces.
+ *
+ * The prompter's *text* deliberately sits outside this: it is drawn with the colours the user chose
+ * in [com.paulchibamba.teleprompter.domain.model.TypographySettings]. Wallpaper-derived colour would
+ * be actively harmful there, because contrast through beam-splitter glass is a legibility
+ * requirement rather than a matter of taste.
+ */
 @Composable
-fun TeleprompterTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
+fun PrompterTheme(
+    useDarkTheme: Boolean = isSystemInDarkTheme(),
+    useDynamicColor: Boolean = true,
+    content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
+        colorScheme = resolveColorScheme(useDarkTheme, useDynamicColor),
+        typography = PrompterTypography,
+        content = content,
     )
 }
+
+@Composable
+private fun resolveColorScheme(useDarkTheme: Boolean, useDynamicColor: Boolean): ColorScheme {
+    if (useDynamicColor && supportsDynamicColor()) {
+        val context = LocalContext.current
+        return if (useDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    }
+    return if (useDarkTheme) DarkColors else LightColors
+}
+
+private fun supportsDynamicColor(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S

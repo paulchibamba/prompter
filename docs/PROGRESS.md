@@ -12,7 +12,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 - [x] **Step 3** — Domain models & pure logic
 - [x] **Step 4** — Script persistence
 - [x] **Step 5** — Settings & preset persistence
-- [ ] **Step 6** — App shell: theme, navigation, DI wiring
+- [x] **Step 6** — App shell: theme, navigation, DI wiring
 
 ## Phase B — Reading works end to end
 
@@ -72,6 +72,14 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 1** — `docs/PROGRESS.md` and `docs/BUILD_PLAN.md` were created in Step 1 rather than Step 2, since
   Step 1 needs somewhere to tick itself off and the README links to both. `docs/ARCHITECTURE.md` remains
   scheduled for Step 2.
+- **Step 2** — `docs/ARCHITECTURE.md` was never written, and `CLAUDE.md` was not created until Step 6.
+  `CLAUDE.md` now carries the layering rules, code style and git conventions; `README.md` and
+  `CONTRIBUTING.md` carry the public-facing versions. A separate `docs/ARCHITECTURE.md` would only
+  duplicate them, so it is dropped rather than deferred.
+- **Step 6** — `material-icons-core` was added to the version catalog. Material3 1.4.0 no longer brings the
+  icon set in transitively, and the app shell needs it for the navigation back button.
+- **Step 6** — `TeleprompterTheme` was renamed `PrompterTheme`, matching the product name used everywhere
+  else. Only `MainActivity` referenced it.
 - **Step 2** — `docs/SPEC.md` illustrates the package layout under `com.paul.prompter`. The real package,
   fixed by the Android Studio scaffold in Step 1, is `com.paulchibamba.teleprompter` and stays that way;
   renaming it now buys nothing and risks breaking `applicationId`-sensitive tooling. Documented in
