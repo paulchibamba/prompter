@@ -1,0 +1,226 @@
+package com.paulchibamba.teleprompter.ui.prompter
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
+import com.paulchibamba.teleprompter.domain.model.CaseMode
+import com.paulchibamba.teleprompter.domain.model.LayoutSettings
+import com.paulchibamba.teleprompter.domain.model.PromptAlign
+import com.paulchibamba.teleprompter.domain.model.TypographySettings
+import com.paulchibamba.teleprompter.ui.theme.PrompterFonts
+
+/**
+ * The scrolling text itself (docs/SPEC.md §6, §8.3).
+ *
+ * Two things here are not negotiable and are easy to get wrong:
+ *
+ * The surface opts **out of the system font scale**. A user who sets 72sp means 72sp — they have
+ * measured it against glass at a distance. Every other screen in the app respects font scale; this
+ * one must not, or the calibration they did is silently undone by an accessibility setting.
+ *
+ * Paragraphs are **separate list items**, not one enormous `Text`. Compose degrades badly on very
+ * large single text nodes, and a ten-thousand-word script is exactly that.
+ */
+@Composable
+fun PrompterSurface(
+    paragraphs: List<String>,
+    typography: TypographySettings,
+    layout: LayoutSettings,
+    listState: LazyListState = rememberLazyListState(),
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
+
+    CompositionLocalProvider(
+        LocalDensity provides Density(density.density, fontScale = 1f),
+    ) {
+        BoxWithConstraints(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color(typography.backgroundColor)),
+        ) {
+            val paragraphSpacing = typography.paragraphSpacing()
+            val metrics = rememberSurfaceMetrics(
+                screenWidth = maxWidth,
+                screenHeight = maxHeight,
+                layout = layout,
+                lineHeight = typography.lineHeight(),
+                paragraphSpacing = paragraphSpacing,
+            )
+
+            ParagraphList(
+                paragraphs = paragraphs,
+                textStyle = rememberPrompterTextStyle(typography),
+                paragraphSpacing = paragraphSpacing,
+                caseTransform = typography.caseTransform,
+                metrics = metrics,
+                listState = listState,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ParagraphList(
+    paragraphs: List<String>,
+    textStyle: TextStyle,
+    paragraphSpacing: Dp,
+    caseTransform: CaseMode,
+    metrics: SurfaceMetrics,
+    listState: LazyListState,
+) {
+    LazyColumn(
+        state = listState,
+        userScrollEnabled = true,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(
+                start = metrics.marginLeft,
+                end = metrics.marginRight,
+                top = metrics.marginTop,
+                bottom = metrics.marginBottom,
+            ),
+    ) {
+        item(key = LEAD_IN_KEY) { Spacer(Modifier.height(metrics.leadIn)) }
+
+        itemsIndexed(paragraphs, key = { index, _ -> index }) { _, paragraph ->
+            ParagraphText(
+                paragraph = paragraph,
+                textStyle = textStyle,
+                bottomSpacing = paragraphSpacing,
+                caseTransform = caseTransform,
+            )
+        }
+
+        item(key = LEAD_OUT_KEY) { Spacer(Modifier.height(metrics.leadOut)) }
+    }
+}
+
+/**
+ * One line of the script.
+ *
+ * Paragraph spacing is padding rather than blank lines in the text, so changing it never edits the
+ * user's script (§6.6).
+ */
+@Composable
+private fun ParagraphText(
+    paragraph: String,
+    textStyle: TextStyle,
+    bottomSpacing: Dp,
+    caseTransform: CaseMode,
+) {
+    Text(
+        text = if (caseTransform == CaseMode.UPPER) paragraph.uppercase() else paragraph,
+        style = textStyle,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = bottomSpacing),
+    )
+}
+
+@Composable
+private fun rememberPrompterTextStyle(typography: TypographySettings): TextStyle =
+    remember(typography) {
+        TextStyle(
+            color = Color(typography.textColor),
+            fontSize = typography.sizeSp.sp,
+            fontFamily = PrompterFonts.familyFor(typography.fontId),
+            fontWeight = FontWeight(typography.weight),
+            lineHeight = (typography.sizeSp * typography.lineHeightMul).sp,
+            letterSpacing = typography.letterSpacingEm.em,
+            textAlign = when (typography.textAlign) {
+                PromptAlign.LEFT -> TextAlign.Start
+                PromptAlign.CENTER -> TextAlign.Center
+            },
+            // Trim.None keeps the first and last line's leading intact, so spacing stays even as
+            // text scrolls past the reading line rather than tightening at the edges (§6.3).
+            lineHeightStyle = LineHeightStyle(
+                alignment = LineHeightStyle.Alignment.Center,
+                trim = LineHeightStyle.Trim.None,
+            ),
+        )
+    }
+
+private fun TypographySettings.paragraphSpacing(): Dp = (sizeSp * paragraphSpacingEm).dp
+
+/**
+ * One line's worth of vertical space. Because the surface pins `fontScale` to 1, an sp value and a
+ * dp value describe the same distance here — which is exactly why this conversion is safe.
+ */
+private fun TypographySettings.lineHeight(): Dp = (sizeSp * lineHeightMul).dp
+
+/** Where the text column sits, and how much empty space brackets it. */
+private data class SurfaceMetrics(
+    val marginLeft: Dp,
+    val marginRight: Dp,
+    val marginTop: Dp,
+    val marginBottom: Dp,
+    val leadIn: Dp,
+    val leadOut: Dp,
+)
+
+/**
+ * Margins are percentages of the screen, not dp, because the constraint is the beam-splitter's
+ * crop and that is proportional (§7.1).
+ *
+ * The lead-in and lead-out spacers are the part everyone forgets: without them the first line
+ * starts at the top edge instead of at the reading line, and the last line can never reach the
+ * reading line at all — so the end of every script is unreadable.
+ */
+@Composable
+private fun rememberSurfaceMetrics(
+    screenWidth: Dp,
+    screenHeight: Dp,
+    layout: LayoutSettings,
+    lineHeight: Dp,
+    paragraphSpacing: Dp,
+): SurfaceMetrics = remember(screenWidth, screenHeight, layout, lineHeight, paragraphSpacing) {
+    val marginTop = screenHeight * (layout.marginTopPct / 100f)
+    val marginBottom = screenHeight * (layout.marginBottomPct / 100f)
+    val columnHeight = (screenHeight - marginTop - marginBottom).coerceAtLeast(0.dp)
+
+    // The reading line is measured from the top of the screen, which is how a user calibrating
+    // against glass thinks about it. The lead-in is the gap from the top of the text column to it.
+    val readingLineFromTop = screenHeight * (layout.readingLinePct / 100f)
+    val leadIn = (readingLineFromTop - marginTop).coerceIn(0.dp, columnHeight)
+
+    SurfaceMetrics(
+        marginLeft = screenWidth * (layout.marginLeftPct / 100f),
+        marginRight = screenWidth * (layout.marginRightPct / 100f),
+        marginTop = marginTop,
+        marginBottom = marginBottom,
+        leadIn = leadIn,
+        // Enough for the last line to travel up to the reading line and stop *on* it. The final
+        // line's own height and trailing paragraph spacing already occupy part of that distance,
+        // so they come off — otherwise the script ends with the last line drifting past the mark
+        // into blank space, which reads as the text having run away from you.
+        leadOut = (columnHeight - leadIn - lineHeight - paragraphSpacing).coerceAtLeast(0.dp),
+    )
+}
+
+private const val LEAD_IN_KEY = "lead-in"
+private const val LEAD_OUT_KEY = "lead-out"
