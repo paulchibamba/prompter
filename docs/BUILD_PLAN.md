@@ -8,9 +8,14 @@ leaves `main` green, and does not depend on work scheduled for a later step.
 
 ## Conventions
 
-Every step branches from `main` as `step-NN-short-name`, ends with `./gradlew :app:assembleDebug` passing
-(plus `:app:testDebugUnitTest` where the step added tests), updates `docs/PROGRESS.md`, and merges via PR
-with CI green.
+Every step branches from `main`, ends with `./gradlew :app:assembleDebug` passing (plus
+`:app:testDebugUnitTest` where the step added tests), updates `docs/PROGRESS.md`, and merges via PR with
+CI green.
+
+**Branch names describe the change, not its position in this plan.** Use `app-shell`, `library-screen`,
+`scroll-engine`, `remote-key-router` — never a step number. The numbering here is scaffolding for building
+the app in a sensible order; it means nothing to someone reading the history later, and it ages badly if
+steps get split, merged, or reordered.
 
 Branch protection on `main` is deliberately **off** until Step 25. Branch-per-step is a convention followed
 by discipline while the shape of the project is still moving; it becomes mandatory once the project is stable

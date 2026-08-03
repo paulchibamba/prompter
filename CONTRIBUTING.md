@@ -37,7 +37,8 @@ respect font scale; the prompter surface deliberately does not.
 
 ## Pull requests
 
-- One logical change per PR, branched from `main`.
+- One logical change per PR, branched from `main`. Name the branch after the change — `library-screen`,
+  `scroll-engine` — not after a plan step or an issue number.
 - `./gradlew :app:assembleDebug :app:testDebugUnitTest` must pass locally, and CI must be green.
 - Add unit tests for anything in `domain/` — it is pure Kotlin, so there is no excuse not to.
 - Describe what you changed and how you verified it on a device.
