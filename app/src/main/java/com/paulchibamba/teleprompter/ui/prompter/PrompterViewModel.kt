@@ -48,11 +48,13 @@ class PrompterViewModel(
      * few milliseconds; the surface should follow the finger, but the database should not.
      */
     private val pendingTypography = MutableStateFlow<TypographySettings?>(null)
+    private val pendingScroll = MutableStateFlow<ScrollSettings?>(null)
 
     init {
         loadScript()
         observeSettings()
         persistTypographyAfterAdjustingStops()
+        persistScrollAfterAdjustingStops()
     }
 
     /**
@@ -65,6 +67,15 @@ class PrompterViewModel(
         val coerced = settings.coerced()
         _uiState.update { it.copy(typography = coerced) }
         pendingTypography.value = coerced
+    }
+
+    private fun persistScrollAfterAdjustingStops() {
+        viewModelScope.launch {
+            pendingScroll
+                .filterNotNull()
+                .debounce(SETTINGS_WRITE_DEBOUNCE_MILLIS)
+                .collect { settings -> settingsRepository.setScroll(settings) }
+        }
     }
 
     private fun persistTypographyAfterAdjustingStops() {
@@ -125,9 +136,14 @@ class PrompterViewModel(
         updateTypography(current.copy(sizeSp = current.sizeSp + stepSp))
     }
 
-    private fun updateScroll(settings: ScrollSettings) {
-        viewModelScope.launch { settingsRepository.setScroll(settings.coerced()) }
+    /** Applies a scroll-settings change to the live prompter and stores it a moment later. */
+    fun updateScrollSettings(settings: ScrollSettings) {
+        val coerced = settings.coerced()
+        _uiState.update { it.copy(scroll = coerced) }
+        pendingScroll.value = coerced
     }
+
+    private fun updateScroll(settings: ScrollSettings) = updateScrollSettings(settings)
 
     private fun loadScript() {
         viewModelScope.launch {

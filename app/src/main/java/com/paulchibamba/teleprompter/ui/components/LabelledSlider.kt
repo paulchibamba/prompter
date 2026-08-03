@@ -60,6 +60,7 @@ fun LabelledSlider(
             onReadoutClick = { isTypingValue = true },
         )
         SliderWithSteppers(
+            label = label,
             value = value,
             range = range,
             step = step,
@@ -113,6 +114,7 @@ private fun SliderHeader(label: String, valueLabel: String, onReadoutClick: () -
 
 @Composable
 private fun SliderWithSteppers(
+    label: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     step: Float,
@@ -124,7 +126,7 @@ private fun SliderWithSteppers(
     ) {
         StepperButton(
             icon = Icons.Filled.KeyboardArrowDown,
-            description = "Decrease $step",
+            description = "Decrease $label",
             onClick = { onValueChange((value - step).coerceIn(range)) },
         )
         Slider(
@@ -136,7 +138,7 @@ private fun SliderWithSteppers(
         )
         StepperButton(
             icon = Icons.Filled.Add,
-            description = "Increase $step",
+            description = "Increase $label",
             onClick = { onValueChange((value + step).coerceIn(range)) },
         )
     }

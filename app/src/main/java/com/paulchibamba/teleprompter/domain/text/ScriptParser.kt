@@ -55,6 +55,12 @@ object ScriptParser {
     }
 
     /**
+     * Whether [line] is a cue marker, for deciding how to draw it. The same regex that finds
+     * markers for jumping decides how they look, so the two can never disagree.
+     */
+    fun isMarkerLine(line: String): Boolean = MARKER_REGEX.containsMatchIn(line)
+
+    /**
      * The body split for rendering: one entry per line, empty lines preserved as spacers. The
      * prompter renders one `LazyColumn` item per entry rather than one giant text node (§8.3).
      */

@@ -25,7 +25,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 
 - [x] **Step 11** — Quick-settings sheet & type controls
 - [x] **Step 12** — Font system
-- [ ] **Step 13** — Colour, contrast & marker styling
+- [x] **Step 13** — Colour, contrast & marker styling
 
 ## Phase D — Layout for the glass
 
@@ -99,6 +99,17 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) is **not yet applied** by the prompter, which
   still reads the global settings. Presets can be assigned from the library but have no effect until the
   presets step wires them through.
+- **Step 13** — text and background are also choosable **independently**, not only as the five preset
+  pairings. Every preset clears 7:1, so with presets alone the contrast warning could never fire and the
+  readout would be decorative.
+- **Step 13** — screen brightness sits in the Type tab rather than with the other scroll settings, because
+  it is judged the same way as colour and contrast: by looking at the text through the glass (§6.9).
+- **Step 13** — a hidden marker is not rendered at all, so its words still count toward the script's word
+  count and therefore its pace. Markers are short; the drift is well under a second on a normal script.
+- **Step 13** — **not verified end to end:** the brightness override applies a window attribute that a
+  screenshot cannot capture, and the control sits far enough down a scrolling modal sheet that UI
+  automation could not reach it reliably. The control renders and reads "System" correctly. Worth a manual
+  check.
 - **Step 12** — the imported custom font is **copied into app storage** rather than referenced by a
   persisted URI as the spec suggests. A URI can be revoked and the file behind it deleted, moved, or on an
   SD card that is not in the phone; losing a typeface between takes is worse than a few hundred kilobytes.
