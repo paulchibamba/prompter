@@ -12,6 +12,9 @@ data class PrompterUiState(
      * incremental on a long script (docs/SPEC.md §8.3).
      */
     val paragraphs: List<String> = emptyList(),
+    /** Denormalised on the script; the scroll pace is derived from it. */
+    val wordCount: Int = 0,
+    val isPlaying: Boolean = false,
     val typography: TypographySettings = TypographySettings(),
     val layout: LayoutSettings = LayoutSettings(),
     val scroll: ScrollSettings = ScrollSettings(),
