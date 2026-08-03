@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -51,6 +52,7 @@ fun PrompterSurface(
     typography: TypographySettings,
     layout: LayoutSettings,
     listState: LazyListState = rememberLazyListState(),
+    onTextColumnMeasured: (widthPx: Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -64,6 +66,10 @@ fun PrompterSurface(
                 .background(Color(typography.backgroundColor)),
         ) {
             val paragraphSpacing = typography.paragraphSpacing()
+            ReportTextColumnWidth(
+                columnWidth = maxWidth - (maxWidth * (layout.marginLeftPct + layout.marginRightPct) / 100f),
+                onMeasured = onTextColumnMeasured,
+            )
             val metrics = rememberSurfaceMetrics(
                 screenWidth = maxWidth,
                 screenHeight = maxHeight,
@@ -74,7 +80,7 @@ fun PrompterSurface(
 
             ParagraphList(
                 paragraphs = paragraphs,
-                textStyle = rememberPrompterTextStyle(typography),
+                textStyle = rememberPrompterTextStyleFor(typography),
                 paragraphSpacing = paragraphSpacing,
                 caseTransform = typography.caseTransform,
                 metrics = metrics,
@@ -142,8 +148,12 @@ private fun ParagraphText(
     )
 }
 
+/**
+ * The style the surface draws with. Public because the scroll pace is derived from how tall this
+ * exact style lays the script out — measuring with anything else would put the pace subtly wrong.
+ */
 @Composable
-private fun rememberPrompterTextStyle(typography: TypographySettings): TextStyle =
+fun rememberPrompterTextStyleFor(typography: TypographySettings): TextStyle =
     remember(typography) {
         TextStyle(
             color = Color(typography.textColor),
@@ -164,6 +174,13 @@ private fun rememberPrompterTextStyle(typography: TypographySettings): TextStyle
             ),
         )
     }
+
+/** Hands the laid-out text width back up, in pixels, for the content measurement. */
+@Composable
+private fun ReportTextColumnWidth(columnWidth: Dp, onMeasured: (Int) -> Unit) {
+    val widthPx = with(LocalDensity.current) { columnWidth.roundToPx() }
+    LaunchedEffect(widthPx) { onMeasured(widthPx) }
+}
 
 private fun TypographySettings.paragraphSpacing(): Dp = (sizeSp * paragraphSpacingEm).dp
 

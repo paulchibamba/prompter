@@ -19,7 +19,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 - [x] **Step 7** — Library screen
 - [x] **Step 8** — Editor screen
 - [x] **Step 9** — Prompter surface (static)
-- [ ] **Step 10** — Scroll engine & transport ← *reading works end to end*
+- [x] **Step 10** — Scroll engine & transport ← *reading works end to end*
 
 ## Phase C — Typography
 
@@ -99,6 +99,16 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) is **not yet applied** by the prompter, which
   still reads the global settings. Presets can be assigned from the library but have no effect until the
   presets step wires them through.
+- **Step 10** — content measurement must use the surface's own density with `fontScale` pinned to 1. It
+  originally measured at the *system* font scale while the surface rendered at 1, so on a device with a
+  non-default text size the script measured shorter than it drew and every read ran long — 51s instead of
+  30s on a phone set to 0.8. Verified after the fix: 200 words at 400 wpm takes 30.4s, and takes the same
+  30.5s at 120sp as at 72sp.
+- **Step 10** — end behaviour (HOLD / LOOP / EXIT) is implemented in full, ahead of the scroll settings step
+  which was only meant to expose the controls for it.
+- **Step 10** — a single tap toggles the control bar. The rest of the gesture set arrives with the gestures
+  step; this much is needed now or the bar cannot be recovered once it hides.
+- **Step 10** — the quick-settings button in the control bar is disabled until the sheet exists.
 - **Step 9** — the first and last lines settle about 4.5% of screen height *below* the nominal reading-line
   percentage, because `Trim.None` keeps half-leading above the first line of each text block. The offset is
   identical at both ends, so start and end of a script line up with each other — which is the property that
