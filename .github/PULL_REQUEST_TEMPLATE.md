@@ -1,6 +1,7 @@
 ## What this changes
 
-<!-- One or two sentences. If this is a build-plan step, name it: "Step 07 — Library screen". -->
+<!-- One or two sentences describing the change itself. Title it after what it does —
+     "Library screen", "Scroll engine" — not after a build-plan step number. -->
 
 ## How it was verified
 
