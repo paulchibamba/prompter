@@ -23,7 +23,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 
 ## Phase C — Typography
 
-- [ ] **Step 11** — Quick-settings sheet & type controls
+- [x] **Step 11** — Quick-settings sheet & type controls
 - [ ] **Step 12** — Font system
 - [ ] **Step 13** — Colour, contrast & marker styling
 
@@ -99,6 +99,17 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) is **not yet applied** by the prompter, which
   still reads the global settings. Presets can be assigned from the library but have no effect until the
   presets step wires them through.
+- **Step 11** — the sheet's height fraction goes on its *content*, not on `ModalBottomSheet` itself.
+  Sizing the sheet container anchors it to the top of the screen with the script below it.
+- **Step 11** — `ModalBottomSheet` opens its own window, which brings the system bars back. The immersive
+  effect is re-keyed on the sheet's visibility so closing it restores the prompter's full-screen state.
+- **Step 11** — typography edits apply to the visible text immediately and are written after a 200ms pause.
+  The stored value only changes when the write lands, so the settings flow cannot emit mid-drag and fight
+  the value under the reader's finger.
+- **Step 11** — the weight picker offers the five named weights (300/400/500/700/900) as chips rather than a
+  segmented row; five words do not fit across a narrow phone, and shrinking them would defeat showing each
+  name in its own weight. 600 and 800 remain storable, just not offered by eye.
+- **Step 11** — the Layout and Scroll tabs exist but say what arrives in them later.
 - **Step 10** — content measurement must use the surface's own density with `fontScale` pinned to 1. It
   originally measured at the *system* font scale while the surface rendered at 1, so on a device with a
   non-default text size the script measured shorter than it drew and every read ran long — 51s instead of

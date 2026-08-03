@@ -7,14 +7,18 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.toRoute
 import com.paulchibamba.teleprompter.domain.model.ScrollSettings
+import com.paulchibamba.teleprompter.domain.model.TypographySettings
 import com.paulchibamba.teleprompter.domain.repository.SettingsRepository
 import com.paulchibamba.teleprompter.domain.text.ScriptParser
 import com.paulchibamba.teleprompter.domain.usecase.GetScript
 import com.paulchibamba.teleprompter.ui.navigation.Destination
 import com.paulchibamba.teleprompter.ui.prompterContainer
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -26,6 +30,7 @@ import kotlinx.coroutines.launch
  * are written straight to the global settings — they are adjustments a reader makes mid-take and
  * expects to still be there next time.
  */
+@OptIn(FlowPreview::class)
 class PrompterViewModel(
     private val scriptId: Long,
     private val getScript: GetScript,
@@ -35,9 +40,37 @@ class PrompterViewModel(
     private val _uiState = MutableStateFlow(PrompterUiState())
     val uiState = _uiState.asStateFlow()
 
+    /**
+     * The most recent typography edit awaiting a write. Dragging a slider produces a change every
+     * few milliseconds; the surface should follow the finger, but the database should not.
+     */
+    private val pendingTypography = MutableStateFlow<TypographySettings?>(null)
+
     init {
         loadScript()
         observeSettings()
+        persistTypographyAfterAdjustingStops()
+    }
+
+    /**
+     * Applies a typography change to the visible text immediately and stores it a moment later.
+     *
+     * The stored value only changes when the write lands, so the settings flow does not emit
+     * mid-drag and cannot fight the value under the reader's finger.
+     */
+    fun updateTypography(settings: TypographySettings) {
+        val coerced = settings.coerced()
+        _uiState.update { it.copy(typography = coerced) }
+        pendingTypography.value = coerced
+    }
+
+    private fun persistTypographyAfterAdjustingStops() {
+        viewModelScope.launch {
+            pendingTypography
+                .filterNotNull()
+                .debounce(SETTINGS_WRITE_DEBOUNCE_MILLIS)
+                .collect { settings -> settingsRepository.setTypography(settings) }
+        }
     }
 
     fun togglePlayPause() {
@@ -67,8 +100,7 @@ class PrompterViewModel(
 
     private fun stepFontSize(stepSp: Float) {
         val current = _uiState.value.typography
-        val stepped = current.copy(sizeSp = current.sizeSp + stepSp).coerced()
-        viewModelScope.launch { settingsRepository.setTypography(stepped) }
+        updateTypography(current.copy(sizeSp = current.sizeSp + stepSp))
     }
 
     private fun updateScroll(settings: ScrollSettings) {
@@ -107,6 +139,7 @@ class PrompterViewModel(
     companion object {
         /** Matches the spec's stepper granularity for size (docs/SPEC.md §6.2). */
         private const val FONT_STEP_SP = 2f
+        private const val SETTINGS_WRITE_DEBOUNCE_MILLIS = 200L
 
         val Factory = viewModelFactory {
             initializer {

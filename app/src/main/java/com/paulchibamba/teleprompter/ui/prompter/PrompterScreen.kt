@@ -56,9 +56,10 @@ fun PrompterScreen(
 
     var textColumnWidthPx by remember { mutableIntStateOf(0) }
     var areControlsVisible by remember { mutableStateOf(true) }
+    var isQuickSettingsOpen by remember { mutableStateOf(false) }
     var interactionCount by remember { mutableIntStateOf(0) }
 
-    ImmersiveScreen(keepScreenOn = uiState.scroll.keepScreenOn)
+    ImmersiveScreen(keepScreenOn = uiState.scroll.keepScreenOn, reapplyToken = isQuickSettingsOpen)
     HideControlsAfterIdle(areControlsVisible, interactionCount) { areControlsVisible = false }
 
     val paragraphSpacingPx = with(density) {
@@ -139,8 +140,20 @@ fun PrompterScreen(
             onFontUp = viewModel::increaseFontSize,
             onFontDown = viewModel::decreaseFontSize,
             onNavigateBack = onNavigateBack,
+            onOpenQuickSettings = {
+                areControlsVisible = false
+                isQuickSettingsOpen = true
+            },
             onInteraction = { interactionCount++ },
             modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+
+    if (isQuickSettingsOpen) {
+        QuickSettingsSheet(
+            typography = uiState.typography,
+            onTypographyChanged = viewModel::updateTypography,
+            onDismiss = { isQuickSettingsOpen = false },
         )
     }
 }

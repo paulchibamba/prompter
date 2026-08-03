@@ -61,6 +61,7 @@ fun ControlBar(
     onFontUp: () -> Unit,
     onFontDown: () -> Unit,
     onNavigateBack: () -> Unit,
+    onOpenQuickSettings: () -> Unit,
     onInteraction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -93,6 +94,7 @@ fun ControlBar(
                 onNudgeUp = resettingIdleTimer(onNudgeUp),
                 onNudgeDown = resettingIdleTimer(onNudgeDown),
                 onNavigateBack = onNavigateBack,
+                onOpenQuickSettings = resettingIdleTimer(onOpenQuickSettings),
             )
             AdjustmentRow(
                 speedWpm = speedWpm,
@@ -114,6 +116,7 @@ private fun TransportRow(
     onNudgeUp: () -> Unit,
     onNudgeDown: () -> Unit,
     onNavigateBack: () -> Unit,
+    onOpenQuickSettings: () -> Unit,
 ) {
     ControlRow {
         ControlButton(
@@ -137,13 +140,10 @@ private fun TransportRow(
             description = "Nudge down one line",
             onClick = onNudgeDown,
         )
-        // The quick-settings sheet arrives with the typography controls; shown disabled so the
-        // bar keeps its final shape rather than shifting under the reader later.
         ControlButton(
             icon = Icons.Filled.Settings,
-            description = "Settings",
-            onClick = {},
-            enabled = false,
+            description = "Quick settings",
+            onClick = onOpenQuickSettings,
         )
     }
 }
