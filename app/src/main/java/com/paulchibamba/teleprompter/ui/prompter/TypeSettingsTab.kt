@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,7 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.paulchibamba.teleprompter.domain.model.CaseMode
+import com.paulchibamba.teleprompter.domain.model.MarkerStyle
 import com.paulchibamba.teleprompter.domain.model.PromptAlign
+import com.paulchibamba.teleprompter.domain.model.ScrollSettings
 import com.paulchibamba.teleprompter.domain.model.TypographySettings
 import com.paulchibamba.teleprompter.ui.components.LabelledSlider
 import com.paulchibamba.teleprompter.ui.components.SegmentedOptionRow
@@ -38,6 +41,8 @@ fun TypeSettingsTab(
     onTypographyChanged: (TypographySettings) -> Unit,
     customFontFile: File?,
     onCustomFontImported: (String) -> Unit,
+    scroll: ScrollSettings,
+    onScrollChanged: (ScrollSettings) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var isPickingFont by remember { mutableStateOf(false) }
@@ -58,6 +63,9 @@ fun TypeSettingsTab(
         WeightPicker(typography, onTypographyChanged)
         AlignmentPicker(typography, onTypographyChanged)
         CasePicker(typography, onTypographyChanged)
+        ColourSettings(typography, onTypographyChanged)
+        MarkerStylePicker(typography, onTypographyChanged)
+        BrightnessSlider(scroll, onScrollChanged)
     }
 
     if (isPickingFont) {
@@ -204,6 +212,61 @@ private fun CasePicker(
         Text(if (case == CaseMode.NONE) "Normal" else "UPPERCASE")
     }
 }
+
+@Composable
+private fun MarkerStylePicker(
+    typography: TypographySettings,
+    onChanged: (TypographySettings) -> Unit,
+) {
+    SegmentedOptionRow(
+        label = "Section markers",
+        options = MarkerStyle.entries,
+        selectedOption = typography.markerStyle,
+        onOptionSelected = { onChanged(typography.copy(markerStyle = it)) },
+        supportingText = "Hidden markers still work as jump targets.",
+    ) { style ->
+        Text(
+            text = when (style) {
+                MarkerStyle.NORMAL -> "Normal"
+                MarkerStyle.DIMMED -> "Dim"
+                MarkerStyle.ACCENT -> "Accent"
+                MarkerStyle.HIDDEN -> "Hide"
+            },
+        )
+    }
+}
+
+/**
+ * Brightness lives here rather than with the scroll settings because it is judged the same way as
+ * colour and contrast: by looking at the text through the glass (docs/SPEC.md §6.9).
+ */
+@Composable
+private fun BrightnessSlider(
+    scroll: ScrollSettings,
+    onChanged: (ScrollSettings) -> Unit,
+) {
+    val isFollowingSystem = scroll.brightnessOverride < 0f
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        LabelledSlider(
+            label = "Screen brightness",
+            value = if (isFollowingSystem) SYSTEM_BRIGHTNESS_SLIDER_POSITION else scroll.brightnessOverride,
+            range = 0f..1f,
+            step = 0.05f,
+            valueLabel = if (isFollowingSystem) "System" else "${(scroll.brightnessOverride * 100).roundToInt()}%",
+            onValueChange = { onChanged(scroll.copy(brightnessOverride = it)) },
+        )
+        TextButton(
+            onClick = { onChanged(scroll.copy(brightnessOverride = ScrollSettings.BRIGHTNESS_SYSTEM)) },
+            enabled = !isFollowingSystem,
+        ) {
+            Text("Follow system brightness")
+        }
+    }
+}
+
+/** Where the slider sits while the system is in charge — shown, but not yet overriding anything. */
+private const val SYSTEM_BRIGHTNESS_SLIDER_POSITION = 1f
 
 /**
  * The five weights worth naming. The stored value is a plain number, so a preset written by hand

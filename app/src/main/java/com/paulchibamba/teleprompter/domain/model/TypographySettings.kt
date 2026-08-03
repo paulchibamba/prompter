@@ -9,6 +9,13 @@ enum class PromptAlign { LEFT, CENTER }
 enum class CaseMode { NONE, UPPER }
 
 /**
+ * How cue markers are drawn (docs/SPEC.md §6.10). [HIDDEN] removes them from the page but not from
+ * the script — they remain jump targets, because that is usually why they were written.
+ */
+@Serializable
+enum class MarkerStyle { NORMAL, DIMMED, ACCENT, HIDDEN }
+
+/**
  * Type settings for the prompter surface (docs/SPEC.md §4.1, §6).
  *
  * Colours are ARGB packed into a [Long] rather than a Compose `Color` so this stays a pure-Kotlin
@@ -33,6 +40,8 @@ data class TypographySettings(
     val textColor: Long = 0xFFFFFFFF,
     val backgroundColor: Long = 0xFF000000,
     val hyphenation: Boolean = false,
+    val markerStyle: MarkerStyle = MarkerStyle.NORMAL,
+    val markerColor: Long = DEFAULT_MARKER_COLOR,
 ) {
     /**
      * Clamps every value into its supported range and rounds [weight] to the nearest 100.
@@ -66,5 +75,11 @@ data class TypographySettings(
         const val MAX_LETTER_SPACING_EM = 0.25f
         const val MIN_PARAGRAPH_SPACING_EM = 0f
         const val MAX_PARAGRAPH_SPACING_EM = 3f
+
+        /** Warm amber: visible against the usual white-on-black without competing with it. */
+        const val DEFAULT_MARKER_COLOR = 0xFFFFBF00
+
+        /** The opacity [MarkerStyle.DIMMED] draws markers at. */
+        const val DIMMED_MARKER_ALPHA = 0.5f
     }
 }

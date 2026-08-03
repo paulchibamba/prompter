@@ -60,6 +60,7 @@ fun PrompterScreen(
     var interactionCount by remember { mutableIntStateOf(0) }
 
     ImmersiveScreen(keepScreenOn = uiState.scroll.keepScreenOn, reapplyToken = isQuickSettingsOpen)
+    ScreenBrightnessOverride(brightness = uiState.scroll.brightnessOverride)
     HideControlsAfterIdle(areControlsVisible, interactionCount) { areControlsVisible = false }
 
     val paragraphSpacingPx = with(density) {
@@ -155,6 +156,8 @@ fun PrompterScreen(
             onTypographyChanged = viewModel::updateTypography,
             customFontFile = viewModel.importedFontFile(),
             onCustomFontImported = viewModel::importCustomFont,
+            scroll = uiState.scroll,
+            onScrollChanged = viewModel::updateScrollSettings,
             onDismiss = { isQuickSettingsOpen = false },
         )
     }

@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.paulchibamba.teleprompter.domain.model.ScrollSettings
 import com.paulchibamba.teleprompter.domain.model.TypographySettings
 import java.io.File
 
@@ -40,6 +41,8 @@ fun QuickSettingsSheet(
     onTypographyChanged: (TypographySettings) -> Unit,
     customFontFile: File?,
     onCustomFontImported: (String) -> Unit,
+    scroll: ScrollSettings,
+    onScrollChanged: (ScrollSettings) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(QuickSettingsTab.TYPE) }
@@ -75,6 +78,8 @@ fun QuickSettingsSheet(
                         onTypographyChanged = onTypographyChanged,
                         customFontFile = customFontFile,
                         onCustomFontImported = onCustomFontImported,
+                        scroll = scroll,
+                        onScrollChanged = onScrollChanged,
                     )
 
                     QuickSettingsTab.LAYOUT -> NotYetBuiltMessage(

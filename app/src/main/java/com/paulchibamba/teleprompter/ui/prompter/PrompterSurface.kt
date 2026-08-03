@@ -30,8 +30,10 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.paulchibamba.teleprompter.domain.model.CaseMode
 import com.paulchibamba.teleprompter.domain.model.LayoutSettings
+import com.paulchibamba.teleprompter.domain.model.MarkerStyle
 import com.paulchibamba.teleprompter.domain.model.PromptAlign
 import com.paulchibamba.teleprompter.domain.model.TypographySettings
+import com.paulchibamba.teleprompter.domain.text.ScriptParser
 import com.paulchibamba.teleprompter.ui.theme.PrompterFonts
 import java.io.File
 
@@ -84,6 +86,8 @@ fun PrompterSurface(
                 textStyle = rememberPrompterTextStyleFor(typography),
                 paragraphSpacing = paragraphSpacing,
                 caseTransform = typography.caseTransform,
+                markerStyle = typography.markerStyle,
+                markerAppearance = typography.markerAppearance(),
                 metrics = metrics,
                 listState = listState,
             )
@@ -97,6 +101,8 @@ private fun ParagraphList(
     textStyle: TextStyle,
     paragraphSpacing: Dp,
     caseTransform: CaseMode,
+    markerStyle: MarkerStyle,
+    markerAppearance: MarkerAppearance,
     metrics: SurfaceMetrics,
     listState: LazyListState,
 ) {
@@ -115,12 +121,16 @@ private fun ParagraphList(
         item(key = LEAD_IN_KEY) { Spacer(Modifier.height(metrics.leadIn)) }
 
         itemsIndexed(paragraphs, key = { index, _ -> index }) { _, paragraph ->
-            ParagraphText(
-                paragraph = paragraph,
-                textStyle = textStyle,
-                bottomSpacing = paragraphSpacing,
-                caseTransform = caseTransform,
-            )
+            val isMarker = ScriptParser.isMarkerLine(paragraph)
+            if (!(isMarker && markerStyle == MarkerStyle.HIDDEN)) {
+                ParagraphText(
+                    paragraph = paragraph,
+                    textStyle = textStyle,
+                    bottomSpacing = paragraphSpacing,
+                    caseTransform = caseTransform,
+                    markerAppearance = if (isMarker) markerAppearance else null,
+                )
+            }
         }
 
         item(key = LEAD_OUT_KEY) { Spacer(Modifier.height(metrics.leadOut)) }
@@ -139,10 +149,12 @@ private fun ParagraphText(
     textStyle: TextStyle,
     bottomSpacing: Dp,
     caseTransform: CaseMode,
+    markerAppearance: MarkerAppearance?,
 ) {
     Text(
         text = if (caseTransform == CaseMode.UPPER) paragraph.uppercase() else paragraph,
         style = textStyle,
+        color = markerAppearance?.color ?: Color.Unspecified,
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = bottomSpacing),
@@ -184,6 +196,17 @@ fun rememberPrompterTextStyleFor(typography: TypographySettings): TextStyle =
 private fun ReportTextColumnWidth(columnWidth: Dp, onMeasured: (Int) -> Unit) {
     val widthPx = with(LocalDensity.current) { columnWidth.roundToPx() }
     LaunchedEffect(widthPx) { onMeasured(widthPx) }
+}
+
+/** How a marker line differs from ordinary text; null means it does not (docs/SPEC.md §6.10). */
+private data class MarkerAppearance(val color: Color)
+
+private fun TypographySettings.markerAppearance(): MarkerAppearance = when (markerStyle) {
+    MarkerStyle.NORMAL, MarkerStyle.HIDDEN -> MarkerAppearance(Color(textColor))
+    MarkerStyle.DIMMED -> MarkerAppearance(
+        Color(textColor).copy(alpha = TypographySettings.DIMMED_MARKER_ALPHA),
+    )
+    MarkerStyle.ACCENT -> MarkerAppearance(Color(markerColor))
 }
 
 private fun TypographySettings.paragraphSpacing(): Dp = (sizeSp * paragraphSpacingEm).dp
