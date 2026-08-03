@@ -19,17 +19,23 @@ import androidx.core.view.WindowInsetsControllerCompat
  * using the app.
  */
 @Composable
-fun ImmersiveScreen(keepScreenOn: Boolean) {
+fun ImmersiveScreen(keepScreenOn: Boolean, reapplyToken: Any = Unit) {
     val view = LocalView.current
     val window = view.context.findActivity()?.window ?: return
 
-    HideSystemBarsWhileVisible(window, view)
+    HideSystemBarsWhileVisible(window, view, reapplyToken)
     KeepScreenOnWhileVisible(window, keepScreenOn)
 }
 
 @Composable
-private fun HideSystemBarsWhileVisible(window: android.view.Window, view: android.view.View) {
-    DisposableEffect(window, view) {
+private fun HideSystemBarsWhileVisible(
+    window: android.view.Window,
+    view: android.view.View,
+    reapplyToken: Any,
+) {
+    // A dialog window — the quick-settings sheet — brings the system bars back with it. Rerunning
+    // this when the sheet closes puts the prompter back the way the reader left it.
+    DisposableEffect(window, view, reapplyToken) {
         val controller = WindowCompat.getInsetsController(window, view)
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
