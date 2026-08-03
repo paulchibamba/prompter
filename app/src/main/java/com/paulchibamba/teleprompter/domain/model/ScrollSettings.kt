@@ -1,7 +1,11 @@
 package com.paulchibamba.teleprompter.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class SpeedMode { WPM, PIXELS }
 
+@Serializable
 enum class EndBehaviour { HOLD, LOOP, EXIT }
 
 /**
@@ -9,7 +13,11 @@ enum class EndBehaviour { HOLD, LOOP, EXIT }
  *
  * Speed is expressed in words per minute by default because it is the only unit that stays
  * meaningful when the font size changes — see [com.paulchibamba.teleprompter.domain.scroll.WpmCalculator].
+ *
+ * Serialised into DataStore and into a preset's `scrollJson` column — see [TypographySettings] for
+ * why every property carries a default.
  */
+@Serializable
 data class ScrollSettings(
     val speedWpm: Int = 140,
     val speedMode: SpeedMode = SpeedMode.WPM,

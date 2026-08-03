@@ -22,15 +22,19 @@ com.paulchibamba.teleprompter
 ├── AppContainer            manual DI graph, held by PrompterApplication
 ├── data
 │   ├── db          Room: PrompterDatabase, ScriptDao, ScriptEntity,
-│   │               RoomScriptRepository
-│   ├── prefs       DataStore: SettingsRepository, PresetRepository
+│   │               RoomScriptRepository, PresetDao, PresetEntity,
+│   │               RoomPresetRepository
+│   ├── prefs       DataStore: DataStoreSettingsRepository
+│   ├── json        SettingsCodec (settings ⇄ JSON, shared by db and prefs)
 │   └── io          ImportExport (SAF, charset detection)
 ├── domain
 │   ├── model       Script, Marker, TypographySettings, LayoutSettings,
 │   │               ScrollSettings, KeyBinding, PromptAction, Preset
 │   ├── text        ScriptParser (markers, section breaks, word count)
-│   ├── repository  ScriptRepository (interface; implemented in data)
-│   ├── usecase     ScriptUseCases (save, delete/restore, duplicate, reorder…)
+│   ├── repository  ScriptRepository, SettingsRepository, PresetRepository
+│   │               (interfaces; implemented in data)
+│   ├── usecase     ScriptUseCases (save, delete/restore, duplicate, reorder…),
+│   │               PresetUseCases (save, delete, apply)
 │   └── scroll      ScrollEngine, WpmCalculator
 ├── input
 │   ├── RemoteKeyRouter      dispatchKeyEvent → PromptAction
@@ -81,15 +85,28 @@ not an arbitrary `Activity` — decides what a keypress means.
 | Concern | Mechanism | Why |
 |---|---|---|
 | Scripts | Room (`data.db`) | Structured, queryable, grows large (10,000-word scripts, many of them) |
-| Settings, presets, key bindings | DataStore Preferences (`data.prefs`) | Small, flat, read on every frame-loop start — Preferences DataStore avoids Room's per-query overhead for this shape of data |
+| Presets | Room (`data.db`) | A list the user adds to, deletes from and sorts, and a script's `presetId` is a reference to a row — that is a table, not a preference |
+| Global default settings, key bindings | DataStore Preferences (`data.prefs`) | Small, flat, read on every frame-loop start — Preferences DataStore avoids Room's per-query overhead for this shape of data |
 
 Both are wrapped by repositories in `data`; nothing outside `data` talks to `RoomDatabase` or
 `DataStore<Preferences>` directly.
+
+The three settings blocks are stored as JSON in both places — three DataStore string keys for the
+global defaults, three columns for a preset — through one shared `SettingsCodec` in `data.json`.
+One codec rather than two is what makes "apply a preset" and "save the current settings as a preset"
+exact inverses of each other. Decoding never throws: a blob written by another version, or a value
+outside a range a later step narrowed, degrades to the model default rather than crashing a read.
+That is also why every property of every settings block carries a default and why the models are
+`@Serializable` — a kotlinx.serialization annotation is pure Kotlin, so it does not breach the
+dependency rule, and the alternative (mirror DTOs in `data`) would be forty fields to keep in sync
+by hand, silently losing a setting the first time someone forgot one.
 
 The repository *interfaces* live in `domain/repository` and their implementations in `data`, so the
 use-cases in `domain/usecase` depend on nothing from `data` and can be tested against an in-memory fake.
 Room's schemas are exported to `app/schemas/` and committed — that is what makes a future migration
 reviewable and testable against the real previous schema rather than a remembered one.
+`PrompterDatabaseMigrationTest` uses them: it builds a real database at the previous version and
+opens it at the current one, which puts Room's own schema validation in the test's path.
 
 ## No permissions
 
