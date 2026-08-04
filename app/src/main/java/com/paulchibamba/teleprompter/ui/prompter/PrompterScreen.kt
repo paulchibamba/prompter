@@ -57,6 +57,8 @@ fun PrompterScreen(
     var textColumnWidthPx by remember { mutableIntStateOf(0) }
     var areControlsVisible by remember { mutableStateOf(true) }
     var isQuickSettingsOpen by remember { mutableStateOf(false) }
+    // A calibration aid, not a preference: it should never still be on next time the app opens.
+    var isSafeAreaVisible by remember { mutableStateOf(false) }
     var interactionCount by remember { mutableIntStateOf(0) }
 
     ImmersiveScreen(keepScreenOn = uiState.scroll.keepScreenOn, reapplyToken = isQuickSettingsOpen)
@@ -118,6 +120,7 @@ fun PrompterScreen(
             layout = uiState.layout,
             listState = listState,
             onTextColumnMeasured = { widthPx -> textColumnWidthPx = widthPx },
+            isSafeAreaVisible = isSafeAreaVisible,
         )
 
         if (!uiState.isLoading && !uiState.hasContent) {
@@ -158,6 +161,10 @@ fun PrompterScreen(
             onCustomFontImported = viewModel::importCustomFont,
             scroll = uiState.scroll,
             onScrollChanged = viewModel::updateScrollSettings,
+            layout = uiState.layout,
+            onLayoutChanged = viewModel::updateLayout,
+            isSafeAreaVisible = isSafeAreaVisible,
+            onSafeAreaVisibilityChanged = { isSafeAreaVisible = it },
             onDismiss = { isQuickSettingsOpen = false },
         )
     }

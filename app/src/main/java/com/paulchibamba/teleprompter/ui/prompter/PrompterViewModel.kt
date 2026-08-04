@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import android.net.Uri
 import androidx.navigation.toRoute
+import com.paulchibamba.teleprompter.domain.model.LayoutSettings
 import com.paulchibamba.teleprompter.domain.model.ScrollSettings
 import com.paulchibamba.teleprompter.domain.model.TypographySettings
 import com.paulchibamba.teleprompter.data.io.CustomFontStore
@@ -49,12 +50,14 @@ class PrompterViewModel(
      */
     private val pendingTypography = MutableStateFlow<TypographySettings?>(null)
     private val pendingScroll = MutableStateFlow<ScrollSettings?>(null)
+    private val pendingLayout = MutableStateFlow<LayoutSettings?>(null)
 
     init {
         loadScript()
         observeSettings()
         persistTypographyAfterAdjustingStops()
         persistScrollAfterAdjustingStops()
+        persistLayoutAfterAdjustingStops()
     }
 
     /**
@@ -67,6 +70,22 @@ class PrompterViewModel(
         val coerced = settings.coerced()
         _uiState.update { it.copy(typography = coerced) }
         pendingTypography.value = coerced
+    }
+
+    /** Applies a layout change to the live prompter and stores it a moment later. */
+    fun updateLayout(settings: LayoutSettings) {
+        val coerced = settings.coerced()
+        _uiState.update { it.copy(layout = coerced) }
+        pendingLayout.value = coerced
+    }
+
+    private fun persistLayoutAfterAdjustingStops() {
+        viewModelScope.launch {
+            pendingLayout
+                .filterNotNull()
+                .debounce(SETTINGS_WRITE_DEBOUNCE_MILLIS)
+                .collect { settings -> settingsRepository.setLayout(settings) }
+        }
     }
 
     private fun persistScrollAfterAdjustingStops() {

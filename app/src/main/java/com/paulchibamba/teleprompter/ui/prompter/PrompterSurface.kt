@@ -1,10 +1,13 @@
 package com.paulchibamba.teleprompter.ui.prompter
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,10 +19,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -56,6 +62,7 @@ fun PrompterSurface(
     layout: LayoutSettings,
     listState: LazyListState = rememberLazyListState(),
     onTextColumnMeasured: (widthPx: Int) -> Unit = {},
+    isSafeAreaVisible: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -69,10 +76,7 @@ fun PrompterSurface(
                 .background(Color(typography.backgroundColor)),
         ) {
             val paragraphSpacing = typography.paragraphSpacing()
-            ReportTextColumnWidth(
-                columnWidth = maxWidth - (maxWidth * (layout.marginLeftPct + layout.marginRightPct) / 100f),
-                onMeasured = onTextColumnMeasured,
-            )
+            val textStyle = rememberPrompterTextStyleFor(typography)
             val metrics = rememberSurfaceMetrics(
                 screenWidth = maxWidth,
                 screenHeight = maxHeight,
@@ -81,16 +85,37 @@ fun PrompterSurface(
                 paragraphSpacing = paragraphSpacing,
             )
 
+            val widthWithinMargins = maxWidth - metrics.marginLeft - metrics.marginRight
+            val readingWidth = rememberReadingWidth(
+                widthWithinMargins = widthWithinMargins,
+                maxMeasureCh = layout.maxMeasureCh,
+                textStyle = textStyle,
+            )
+
+            // The *effective* width, after any line-length cap — measuring the pace against the
+            // uncapped width would make the script lay out shorter than it reads.
+            ReportTextColumnWidth(columnWidth = readingWidth, onMeasured = onTextColumnMeasured)
+
             ParagraphList(
                 paragraphs = paragraphs,
-                textStyle = rememberPrompterTextStyleFor(typography),
+                textStyle = textStyle,
                 paragraphSpacing = paragraphSpacing,
                 caseTransform = typography.caseTransform,
                 markerStyle = typography.markerStyle,
                 markerAppearance = typography.markerAppearance(),
                 metrics = metrics,
+                readingWidth = readingWidth,
                 listState = listState,
             )
+
+            if (isSafeAreaVisible) {
+                SafeAreaOverlay(
+                    marginLeft = metrics.marginLeft,
+                    marginRight = metrics.marginRight,
+                    marginTop = metrics.marginTop,
+                    marginBottom = metrics.marginBottom,
+                )
+            }
         }
     }
 }
@@ -104,11 +129,10 @@ private fun ParagraphList(
     markerStyle: MarkerStyle,
     markerAppearance: MarkerAppearance,
     metrics: SurfaceMetrics,
+    readingWidth: Dp,
     listState: LazyListState,
 ) {
-    LazyColumn(
-        state = listState,
-        userScrollEnabled = true,
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(
@@ -117,6 +141,16 @@ private fun ParagraphList(
                 top = metrics.marginTop,
                 bottom = metrics.marginBottom,
             ),
+    ) {
+    LazyColumn(
+        state = listState,
+        userScrollEnabled = true,
+        // Centred within the margins, so capping the line length narrows the column evenly
+        // rather than dragging the text to one side (docs/SPEC.md §6.7).
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(readingWidth)
+            .align(Alignment.TopCenter),
     ) {
         item(key = LEAD_IN_KEY) { Spacer(Modifier.height(metrics.leadIn)) }
 
@@ -135,7 +169,37 @@ private fun ParagraphList(
 
         item(key = LEAD_OUT_KEY) { Spacer(Modifier.height(metrics.leadOut)) }
     }
+    }
 }
+
+/**
+ * How wide the text column actually is, after any line-length cap.
+ *
+ * Long lines are the classic teleprompter failure: past a certain measure the eye loses the return
+ * sweep and starts re-reading the line it just finished. The cap is expressed in characters, so it
+ * is derived from how wide a character actually is in the current face and size.
+ */
+@Composable
+private fun rememberReadingWidth(
+    widthWithinMargins: Dp,
+    maxMeasureCh: Int,
+    textStyle: TextStyle,
+): Dp {
+    if (maxMeasureCh <= LayoutSettings.MEASURE_OFF) return widthWithinMargins
+
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+
+    return remember(widthWithinMargins, maxMeasureCh, textStyle, density) {
+        val sample = textMeasurer.measure(AnnotatedString(AVERAGE_WIDTH_SAMPLE), textStyle)
+        val averageCharWidthPx = sample.size.width.toFloat() / AVERAGE_WIDTH_SAMPLE.length
+        val cappedWidth = with(density) { (averageCharWidthPx * maxMeasureCh).toDp() }
+        minOf(cappedWidth, widthWithinMargins)
+    }
+}
+
+/** Lowercase letters, because that is what most of a script is made of. */
+private const val AVERAGE_WIDTH_SAMPLE = "abcdefghijklmnopqrstuvwxyz"
 
 /**
  * One line of the script.

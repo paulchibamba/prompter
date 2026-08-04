@@ -29,7 +29,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 
 ## Phase D — Layout for the glass
 
-- [ ] **Step 14** — Margins, measure & safe-area preview
+- [x] **Step 14** — Margins, measure & safe-area preview
 - [ ] **Step 15** — Reading line & edge fade
 - [ ] **Step 16** — Mirroring & orientation
 - [ ] **Step 17** — Scroll settings
@@ -99,6 +99,14 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) is **not yet applied** by the prompter, which
   still reads the global settings. Presets can be assigned from the library but have no effect until the
   presets step wires them through.
+- **Step 14** — the line-length cap changes the *effective* text width, so that is what gets reported for
+  the pace measurement. Reporting the uncapped width would make the script measure wider — and therefore
+  shorter — than it actually lays out, which is the same class of bug as the font-scale one in Step 10.
+- **Step 14** — the safe-area overlay is UI state, not a stored setting. It is a calibration aid, and it
+  should never still be switched on the next time the app opens.
+- **Step 14** — the cap only binds when the text column is wider than the requested measure, so at large
+  sizes in portrait it correctly does nothing. Verified at 26sp with a 20-character cap: the column
+  narrows and centres within the margins.
 - **Step 13** — text and background are also choosable **independently**, not only as the five preset
   pairings. Every preset clears 7:1, so with presets alone the contrast warning could never fire and the
   readout would be decorative.
