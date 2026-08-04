@@ -31,7 +31,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 
 - [x] **Step 14** — Margins, measure & safe-area preview
 - [x] **Step 15** — Reading line & edge fade
-- [ ] **Step 16** — Mirroring & orientation
+- [x] **Step 16** — Mirroring & orientation
 - [ ] **Step 17** — Scroll settings
 - [ ] **Step 18** — Presets management
 - [ ] **Step 19** — Prompter gestures
@@ -99,6 +99,23 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) is **not yet applied** by the prompter, which
   still reads the global settings. Presets can be assigned from the library but have no effect until the
   presets step wires them through.
+- **Step 16** — `configChanges` and `launchMode="singleTop"` were finally added to the manifest, which
+  Step 2 was meant to do. Without them the activity is recreated on every rotation. With them, rotation
+  preserves the reading position for free — verified: lines 003–006 before, 004–005 after rotating to
+  landscape, same line still at the mark.
+- **Step 16** — **the spec's scroll-direction flip for vertical mirror is deliberately not implemented.**
+  Taken literally it breaks: `direction = -1` at scroll position zero means `scrollBy` consumes nothing on
+  the first frame, the engine reports the end of the script, and playback stops instantly. It is also
+  unnecessary — a rendering flip plus an optical flip cancel out, so motion through the glass is already
+  correct without it. Flagged because it contradicts §7.5 and wants confirming against the real rig, which
+  is already an open question above.
+- **Step 16** — mirroring wraps the text **and** the reading-line indicator in one layer. Mirroring one
+  without the other puts the mark where the current line is not; on a vertical flip they end up on
+  opposite sides of centre. The control bar is deliberately outside it — it is read by whoever is
+  operating the phone, not through the glass.
+- **Step 16** — **not verified:** the Portrait/Landscape orientation locks, and the vertical mirror. The
+  FOLLOW_SENSOR path is exercised (rotation works), and horizontal mirroring is confirmed on device; the
+  remaining paths are one-line mappings that UI automation could not reach reliably.
 - **Step 15** — the lead-in now subtracts half a line height, so the *middle* of the current line sits on
   the reading-line mark. This resolves the Step 9 note: the indicator and the text now agree, and the
   earlier ~4.5% offset is gone rather than being compensated for in the indicator.
@@ -108,9 +125,8 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
   framebuffer: brightness now falls 255 → 112 → 59 approaching the bottom edge.
 - **Step 15** — the fade erases alpha (`DstOut` on an offscreen layer) rather than painting the background
   colour over the text, so it stays correct when the user picks black-on-white.
-- **Step 15** — **not visually confirmed:** the Line and Band marker styles. They share the same centre-line
-  geometry as Arrows, which is verified, and are simpler draws — but UI automation could not reliably hit
-  the segmented control to switch styles. Worth a glance by hand.
+- **Step 15** — the Line marker style was confirmed on device during Step 16. **Band remains unverified**;
+  it shares the same centre-line geometry as the other two.
 - **Step 14** — the line-length cap changes the *effective* text width, so that is what gets reported for
   the pace measurement. Reporting the uncapped width would make the script measure wider — and therefore
   shorter — than it actually lays out, which is the same class of bug as the font-scale one in Step 10.

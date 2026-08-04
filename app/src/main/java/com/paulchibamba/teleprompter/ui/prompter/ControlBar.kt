@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -60,6 +61,8 @@ fun ControlBar(
     onSpeedDown: () -> Unit,
     onFontUp: () -> Unit,
     onFontDown: () -> Unit,
+    isMirrored: Boolean,
+    onToggleMirror: () -> Unit,
     onNavigateBack: () -> Unit,
     onOpenQuickSettings: () -> Unit,
     onInteraction: () -> Unit,
@@ -93,6 +96,8 @@ fun ControlBar(
                 onRestart = resettingIdleTimer(onRestart),
                 onNudgeUp = resettingIdleTimer(onNudgeUp),
                 onNudgeDown = resettingIdleTimer(onNudgeDown),
+                isMirrored = isMirrored,
+                onToggleMirror = resettingIdleTimer(onToggleMirror),
                 onNavigateBack = onNavigateBack,
                 onOpenQuickSettings = resettingIdleTimer(onOpenQuickSettings),
             )
@@ -115,6 +120,8 @@ private fun TransportRow(
     onRestart: () -> Unit,
     onNudgeUp: () -> Unit,
     onNudgeDown: () -> Unit,
+    isMirrored: Boolean,
+    onToggleMirror: () -> Unit,
     onNavigateBack: () -> Unit,
     onOpenQuickSettings: () -> Unit,
 ) {
@@ -140,6 +147,7 @@ private fun TransportRow(
             description = "Nudge down one line",
             onClick = onNudgeDown,
         )
+        MirrorButton(isMirrored = isMirrored, onClick = onToggleMirror)
         ControlButton(
             icon = Icons.Filled.Settings,
             description = "Quick settings",
@@ -171,6 +179,31 @@ private fun AdjustmentRow(
             increaseDescription = "Larger text",
             onDecrease = onFontDown,
             onIncrease = onFontUp,
+        )
+    }
+}
+
+/**
+ * The beam-splitter toggle: one press to flip the image for the glass and back again.
+ *
+ * It shows a mirrored "R" rather than an icon, because the whole question this button answers is
+ * "which way round is my text", and a letter answers it at a glance.
+ */
+@Composable
+private fun MirrorButton(isMirrored: Boolean, onClick: () -> Unit) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(TOUCH_TARGET)
+            .semantics {
+                contentDescription = if (isMirrored) "Turn off mirroring" else "Mirror for beam splitter"
+            },
+    ) {
+        Text(
+            text = "R",
+            color = if (isMirrored) CONTROL_TINT else CONTROL_TINT.copy(alpha = 0.55f),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.graphicsLayer { scaleX = if (isMirrored) -1f else 1f },
         )
     }
 }

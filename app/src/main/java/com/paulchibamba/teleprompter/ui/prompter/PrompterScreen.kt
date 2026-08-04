@@ -63,6 +63,7 @@ fun PrompterScreen(
 
     ImmersiveScreen(keepScreenOn = uiState.scroll.keepScreenOn, reapplyToken = isQuickSettingsOpen)
     ScreenBrightnessOverride(brightness = uiState.scroll.brightnessOverride)
+    OrientationLock(lock = uiState.layout.orientationLock)
     HideControlsAfterIdle(areControlsVisible, interactionCount) { areControlsVisible = false }
 
     val paragraphSpacingPx = with(density) {
@@ -143,6 +144,8 @@ fun PrompterScreen(
             onSpeedDown = viewModel::decreaseSpeed,
             onFontUp = viewModel::increaseFontSize,
             onFontDown = viewModel::decreaseFontSize,
+            isMirrored = uiState.layout.mirrorHorizontal || uiState.layout.mirrorVertical,
+            onToggleMirror = viewModel::toggleBeamSplitterMirror,
             onNavigateBack = onNavigateBack,
             onOpenQuickSettings = {
                 areControlsVisible = false

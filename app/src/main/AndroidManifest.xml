@@ -12,8 +12,10 @@
         android:theme="@style/Theme.Teleprompter">
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|keyboardHidden|locale|layoutDirection"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Teleprompter"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
