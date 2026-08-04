@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.paulchibamba.teleprompter.domain.model.LayoutSettings
 import com.paulchibamba.teleprompter.domain.model.ScrollSettings
 import com.paulchibamba.teleprompter.domain.model.TypographySettings
 import java.io.File
@@ -43,6 +44,10 @@ fun QuickSettingsSheet(
     onCustomFontImported: (String) -> Unit,
     scroll: ScrollSettings,
     onScrollChanged: (ScrollSettings) -> Unit,
+    layout: LayoutSettings,
+    onLayoutChanged: (LayoutSettings) -> Unit,
+    isSafeAreaVisible: Boolean,
+    onSafeAreaVisibilityChanged: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(QuickSettingsTab.TYPE) }
@@ -82,8 +87,11 @@ fun QuickSettingsSheet(
                         onScrollChanged = onScrollChanged,
                     )
 
-                    QuickSettingsTab.LAYOUT -> NotYetBuiltMessage(
-                        "Margins, reading line, edge fade and mirroring arrive with the layout step.",
+                    QuickSettingsTab.LAYOUT -> LayoutSettingsTab(
+                        layout = layout,
+                        onLayoutChanged = onLayoutChanged,
+                        isSafeAreaVisible = isSafeAreaVisible,
+                        onSafeAreaVisibilityChanged = onSafeAreaVisibilityChanged,
                     )
 
                     QuickSettingsTab.SCROLL -> NotYetBuiltMessage(
