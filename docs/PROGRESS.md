@@ -30,7 +30,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 ## Phase D — Layout for the glass
 
 - [x] **Step 14** — Margins, measure & safe-area preview
-- [ ] **Step 15** — Reading line & edge fade
+- [x] **Step 15** — Reading line & edge fade
 - [ ] **Step 16** — Mirroring & orientation
 - [ ] **Step 17** — Scroll settings
 - [ ] **Step 18** — Presets management
@@ -99,6 +99,18 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) is **not yet applied** by the prompter, which
   still reads the global settings. Presets can be assigned from the library but have no effect until the
   presets step wires them through.
+- **Step 15** — the lead-in now subtracts half a line height, so the *middle* of the current line sits on
+  the reading-line mark. This resolves the Step 9 note: the indicator and the text now agree, and the
+  earlier ~4.5% offset is gone rather than being compensated for in the indicator.
+- **Step 15** — the edge fade must be applied **after** the margin padding. Applied before it, the gradient
+  is measured against the whole screen while the text is already clipped inside the margins, so the fade
+  bands land exactly in the margin areas and the setting does nothing at all. Caught by sampling the
+  framebuffer: brightness now falls 255 → 112 → 59 approaching the bottom edge.
+- **Step 15** — the fade erases alpha (`DstOut` on an offscreen layer) rather than painting the background
+  colour over the text, so it stays correct when the user picks black-on-white.
+- **Step 15** — **not visually confirmed:** the Line and Band marker styles. They share the same centre-line
+  geometry as Arrows, which is verified, and are simpler draws — but UI automation could not reliably hit
+  the segmented control to switch styles. Worth a glance by hand.
 - **Step 14** — the line-length cap changes the *effective* text width, so that is what gets reported for
   the pace measurement. Reporting the uncapped width would make the script measure wider — and therefore
   shorter — than it actually lays out, which is the same class of bug as the font-scale one in Step 10.

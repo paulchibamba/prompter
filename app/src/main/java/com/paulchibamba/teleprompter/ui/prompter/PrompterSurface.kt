@@ -106,6 +106,16 @@ fun PrompterSurface(
                 metrics = metrics,
                 readingWidth = readingWidth,
                 listState = listState,
+                edgeFadePercent = layout.edgeFadePct,
+            )
+
+            ReadingLineIndicator(
+                style = layout.readingLineStyle,
+                colour = Color(layout.readingLineColor),
+                readingLineFromTop = metrics.readingLineFromTop,
+                lineHeight = typography.lineHeight(),
+                marginLeft = metrics.marginLeft,
+                marginRight = metrics.marginRight,
             )
 
             if (isSafeAreaVisible) {
@@ -131,6 +141,7 @@ private fun ParagraphList(
     metrics: SurfaceMetrics,
     readingWidth: Dp,
     listState: LazyListState,
+    edgeFadePercent: Float,
 ) {
     Box(
         modifier = Modifier
@@ -140,7 +151,10 @@ private fun ParagraphList(
                 end = metrics.marginRight,
                 top = metrics.marginTop,
                 bottom = metrics.marginBottom,
-            ),
+            )
+            // After the margins, not before: the text is already clipped to this area, so a fade
+            // measured against the whole screen would land entirely in the margins and do nothing.
+            .edgeFade(edgeFadePercent),
     ) {
     LazyColumn(
         state = listState,
@@ -289,6 +303,8 @@ private data class SurfaceMetrics(
     val marginBottom: Dp,
     val leadIn: Dp,
     val leadOut: Dp,
+    /** Where the reading-line indicator is drawn, measured from the top of the screen. */
+    val readingLineFromTop: Dp,
 )
 
 /**
@@ -312,9 +328,14 @@ private fun rememberSurfaceMetrics(
     val columnHeight = (screenHeight - marginTop - marginBottom).coerceAtLeast(0.dp)
 
     // The reading line is measured from the top of the screen, which is how a user calibrating
-    // against glass thinks about it. The lead-in is the gap from the top of the text column to it.
+    // against glass thinks about it.
     val readingLineFromTop = screenHeight * (layout.readingLinePct / 100f)
-    val leadIn = (readingLineFromTop - marginTop).coerceIn(0.dp, columnHeight)
+
+    // Half a line comes off the lead-in so the *middle* of the current line sits on the mark,
+    // rather than the top of its line box. Without this the text settles visibly below the
+    // indicator — the line box carries half its leading above the glyphs, and at a typical size
+    // and leading that gap is large enough to look like a misalignment rather than a choice.
+    val leadIn = (readingLineFromTop - marginTop - lineHeight / 2).coerceIn(0.dp, columnHeight)
 
     SurfaceMetrics(
         marginLeft = screenWidth * (layout.marginLeftPct / 100f),
@@ -327,6 +348,7 @@ private fun rememberSurfaceMetrics(
         // so they come off — otherwise the script ends with the last line drifting past the mark
         // into blank space, which reads as the text having run away from you.
         leadOut = (columnHeight - leadIn - lineHeight - paragraphSpacing).coerceAtLeast(0.dp),
+        readingLineFromTop = readingLineFromTop,
     )
 }
 
