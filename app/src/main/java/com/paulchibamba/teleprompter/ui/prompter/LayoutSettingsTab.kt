@@ -1,6 +1,13 @@
 package com.paulchibamba.teleprompter.ui.prompter
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,9 +18,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.paulchibamba.teleprompter.domain.model.LayoutSettings
+import com.paulchibamba.teleprompter.domain.model.LineStyle
 import com.paulchibamba.teleprompter.ui.components.LabelledSlider
+import com.paulchibamba.teleprompter.ui.components.SegmentedOptionRow
 import kotlin.math.roundToInt
 
 /**
@@ -38,8 +48,163 @@ fun LayoutSettingsTab(
         SideMarginControls(layout, onLayoutChanged)
         VerticalMarginControls(layout, onLayoutChanged)
         LineLengthControls(layout, onLayoutChanged)
+        ReadingLineControls(layout, onLayoutChanged)
+        EdgeFadeSlider(layout, onLayoutChanged)
     }
 }
+
+/**
+ * Where the current line sits, and how it is marked (docs/SPEC.md §7.3).
+ *
+ * Position is a percentage from the top because that is how it is judged in a rig — some people
+ * read best with the line high, so most of the visible text is what is coming next; others want it
+ * lower so they can see what they have just said.
+ */
+@Composable
+private fun ReadingLineControls(
+    layout: LayoutSettings,
+    onChanged: (LayoutSettings) -> Unit,
+) {
+    LabelledSlider(
+        label = "Reading line",
+        value = layout.readingLinePct,
+        range = LayoutSettings.MIN_READING_LINE_PCT..LayoutSettings.MAX_READING_LINE_PCT,
+        step = 1f,
+        valueLabel = "${layout.readingLinePct.roundToInt()}% from top",
+        onValueChange = { onChanged(layout.copy(readingLinePct = it)) },
+    )
+
+    SegmentedOptionRow(
+        label = "Marker style",
+        options = LineStyle.entries,
+        selectedOption = layout.readingLineStyle,
+        onOptionSelected = { onChanged(layout.copy(readingLineStyle = it)) },
+        supportingText = "Arrows sit in the margins, so they never cover a word.",
+    ) { style ->
+        Text(
+            text = when (style) {
+                LineStyle.OFF -> "Off"
+                LineStyle.LINE -> "Line"
+                LineStyle.ARROWS -> "Arrows"
+                LineStyle.BAND -> "Band"
+            },
+        )
+    }
+
+    if (layout.readingLineStyle != LineStyle.OFF) {
+        ReadingLineColourRow(layout, onChanged)
+        ReadingLineOpacitySlider(layout, onChanged)
+    }
+}
+
+@Composable
+private fun ReadingLineColourRow(
+    layout: LayoutSettings,
+    onChanged: (LayoutSettings) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    ) {
+        Text(
+            text = "Marker colour",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(120.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            READING_LINE_COLOURS.forEach { rgb ->
+                val withCurrentOpacity = rgb or (layout.readingLineColor and ALPHA_MASK)
+                ReadingLineSwatch(
+                    colour = Color(rgb or OPAQUE_ALPHA),
+                    isSelected = layout.readingLineColor.rgbOnly() == rgb,
+                    onSelect = { onChanged(layout.copy(readingLineColor = withCurrentOpacity)) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadingLineSwatch(colour: Color, isSelected: Boolean, onSelect: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .background(colour, CircleShape)
+            .border(
+                width = if (isSelected) 3.dp else 1.dp,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant
+                },
+                shape = CircleShape,
+            )
+            .clickable(onClick = onSelect),
+    )
+}
+
+/**
+ * The marker is translucent by default and stays adjustable, because how much it should assert
+ * itself depends on the glass — a bright rig washes out a subtle line, a dark one makes a strong
+ * one shout.
+ */
+@Composable
+private fun ReadingLineOpacitySlider(
+    layout: LayoutSettings,
+    onChanged: (LayoutSettings) -> Unit,
+) {
+    val opacity = layout.readingLineColor.alphaFraction()
+
+    LabelledSlider(
+        label = "Marker opacity",
+        value = opacity,
+        range = 0f..1f,
+        step = 0.05f,
+        valueLabel = "${(opacity * 100).roundToInt()}%",
+        onValueChange = { fraction ->
+            onChanged(layout.copy(readingLineColor = layout.readingLineColor.withAlpha(fraction)))
+        },
+    )
+}
+
+@Composable
+private fun EdgeFadeSlider(
+    layout: LayoutSettings,
+    onChanged: (LayoutSettings) -> Unit,
+) {
+    LabelledSlider(
+        label = "Edge fade",
+        value = layout.edgeFadePct,
+        range = LayoutSettings.MIN_EDGE_FADE_PCT..LayoutSettings.MAX_EDGE_FADE_PCT,
+        step = 1f,
+        valueLabel = if (layout.edgeFadePct <= 0f) "Off" else "${layout.edgeFadePct.roundToInt()}%",
+        onValueChange = { onChanged(layout.copy(edgeFadePct = it)) },
+        supportingText = "Softens lines entering and leaving the frame.",
+    )
+}
+
+private fun Long.rgbOnly(): Long = this and RGB_MASK
+
+private fun Long.alphaFraction(): Float = ((this shr 24) and 0xFF).toFloat() / 255f
+
+private fun Long.withAlpha(fraction: Float): Long {
+    val alpha = (fraction.coerceIn(0f, 1f) * 255f).roundToInt().toLong()
+    return (alpha shl 24) or rgbOnly()
+}
+
+/** Colours that read as "this is the mark", not as part of the script. */
+private val READING_LINE_COLOURS = listOf(
+    0xFF3B30L, // red
+    0xFFBF00L, // amber
+    0x00E5FFL, // cyan
+    0x7CFC00L, // green
+    0xFFFFFFL, // white
+)
+
+private const val RGB_MASK = 0x00FFFFFFL
+private const val ALPHA_MASK = -0x1000000L
+private const val OPAQUE_ALPHA = -0x1000000L
 
 /**
  * The calibration loop: turn it on, hold the phone in the rig, adjust until the dashed box matches
