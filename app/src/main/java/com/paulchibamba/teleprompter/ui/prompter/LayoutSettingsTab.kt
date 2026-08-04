@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.paulchibamba.teleprompter.domain.model.LayoutSettings
 import com.paulchibamba.teleprompter.domain.model.LineStyle
+import com.paulchibamba.teleprompter.domain.model.OrientLock
 import com.paulchibamba.teleprompter.ui.components.LabelledSlider
 import com.paulchibamba.teleprompter.ui.components.SegmentedOptionRow
 import kotlin.math.roundToInt
@@ -50,6 +51,76 @@ fun LayoutSettingsTab(
         LineLengthControls(layout, onLayoutChanged)
         ReadingLineControls(layout, onLayoutChanged)
         EdgeFadeSlider(layout, onLayoutChanged)
+        MirrorControls(layout, onLayoutChanged)
+        OrientationControls(layout, onLayoutChanged)
+    }
+}
+
+/**
+ * Which way the glass flips the image (docs/SPEC.md §7.5). Most beam splitters reverse left to
+ * right; a rig that mounts the phone upside down needs the vertical flip as well.
+ */
+@Composable
+private fun MirrorControls(
+    layout: LayoutSettings,
+    onChanged: (LayoutSettings) -> Unit,
+) {
+    SwitchRow(
+        title = "Mirror horizontally",
+        subtitle = "For the usual beam splitter.",
+        checked = layout.mirrorHorizontal,
+        onCheckedChange = { onChanged(layout.copy(mirrorHorizontal = it)) },
+    )
+    SwitchRow(
+        title = "Mirror vertically",
+        subtitle = "For a rig that mounts the phone upside down.",
+        checked = layout.mirrorVertical,
+        onCheckedChange = { onChanged(layout.copy(mirrorVertical = it)) },
+    )
+}
+
+@Composable
+private fun OrientationControls(
+    layout: LayoutSettings,
+    onChanged: (LayoutSettings) -> Unit,
+) {
+    SegmentedOptionRow(
+        label = "Orientation",
+        options = OrientLock.entries,
+        selectedOption = layout.orientationLock,
+        onOptionSelected = { onChanged(layout.copy(orientationLock = it)) },
+        supportingText = "Locking stops a knocked rig rotating mid-take.",
+    ) { lock ->
+        Text(
+            text = when (lock) {
+                OrientLock.FOLLOW_SENSOR -> "Auto"
+                OrientLock.PORTRAIT -> "Portrait"
+                OrientLock.LANDSCAPE -> "Landscape"
+            },
+        )
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

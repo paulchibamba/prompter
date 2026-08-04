@@ -96,6 +96,16 @@ fun PrompterSurface(
             // uncapped width would make the script lay out shorter than it reads.
             ReportTextColumnWidth(columnWidth = readingWidth, onMeasured = onTextColumnMeasured)
 
+            // Text and reading line share one mirrored layer so they can never disagree about
+            // where the current line is.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .mirrored(
+                        horizontally = layout.mirrorHorizontal,
+                        vertically = layout.mirrorVertical,
+                    ),
+            ) {
             ParagraphList(
                 paragraphs = paragraphs,
                 textStyle = textStyle,
@@ -117,6 +127,7 @@ fun PrompterSurface(
                 marginLeft = metrics.marginLeft,
                 marginRight = metrics.marginRight,
             )
+            }
 
             if (isSafeAreaVisible) {
                 SafeAreaOverlay(

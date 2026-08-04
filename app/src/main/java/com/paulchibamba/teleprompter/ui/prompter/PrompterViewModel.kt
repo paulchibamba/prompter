@@ -72,6 +72,22 @@ class PrompterViewModel(
         pendingTypography.value = coerced
     }
 
+    /**
+     * The one-press beam-splitter flip. Turning it on sets the horizontal mirror, which is what
+     * almost every rig needs; turning it off clears both, so a vertical flip set for an
+     * upside-down mount does not survive as a surprise.
+     */
+    fun toggleBeamSplitterMirror() {
+        val layout = _uiState.value.layout
+        val isMirrored = layout.mirrorHorizontal || layout.mirrorVertical
+        updateLayout(
+            layout.copy(
+                mirrorHorizontal = !isMirrored,
+                mirrorVertical = false,
+            ),
+        )
+    }
+
     /** Applies a layout change to the live prompter and stores it a moment later. */
     fun updateLayout(settings: LayoutSettings) {
         val coerced = settings.coerced()
