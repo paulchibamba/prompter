@@ -121,11 +121,11 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
   rig, often in the dark. On this device the row wraps and the settings button drops to a second line.
 - **Step 17** — `SwitchRow` moved to `ui/components`. The Scroll tab needed the same title/subtitle/switch
   row the Layout tab had built privately, and three more bespoke copies of it were already in that file.
-- **Step 17** — **not verified on device:** that a press of − or + moves the speed by exactly 5px/s in pixels
-  mode. The device dropped its wireless-debug connection mid-check. The arithmetic is unit-tested
-  (`steppedSpeed`, `steppedPxPerSec`), and the control bar was confirmed reading "60 px/s" from the same
-  state. Verified on device: the whole Scroll tab, the words↔pixels conversion subtitle and duration readout
-  in both modes, the 3-2-1 countdown, and blackout including that it stays paused on restore.
+- **Step 17** — verified on device: the whole Scroll tab, the words↔pixels conversion subtitle and duration
+  readout in both modes, the 3-2-1 countdown, blackout including that it stays paused on restore, and the
+  control bar's stepper moving the unit that is in charge — 60 → 70 → 55px/s in pixels mode, 140 → 160 → 140
+  wpm in words mode, in both directions. The mode itself survived an app restart, which is also the
+  debounced write to DataStore landing.
 - **Step 16** — `configChanges` and `launchMode="singleTop"` were finally added to the manifest, which
   Step 2 was meant to do. Without them the activity is recreated on every rotation. With them, rotation
   preserves the reading position for free — verified: lines 003–006 before, 004–005 after rotating to
