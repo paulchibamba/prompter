@@ -1,5 +1,7 @@
 package com.paulchibamba.teleprompter.domain.scroll
 
+import com.paulchibamba.teleprompter.domain.model.ScrollSettings
+import com.paulchibamba.teleprompter.domain.model.SpeedMode
 import kotlin.math.roundToInt
 
 /**
@@ -32,6 +34,34 @@ object WpmCalculator {
     fun wpmFor(pxPerSecond: Float, contentHeightPx: Float, wordCount: Int): Int {
         if (wordCount <= 0 || contentHeightPx <= 0f) return 0
         return (pxPerSecond * SECONDS_PER_MINUTE * wordCount / contentHeightPx).roundToInt()
+    }
+
+    /**
+     * The speed to actually scroll at, whichever unit the user chose (docs/SPEC.md §8.1).
+     *
+     * In pixels mode the stored number *is* the answer, so it survives a font-size change unchanged
+     * — which is the whole point of the mode, and also its cost: the reading pace moves with it.
+     */
+    fun effectivePxPerSecond(
+        scroll: ScrollSettings,
+        contentHeightPx: Float,
+        wordCount: Int,
+    ): Float = when (scroll.speedMode) {
+        SpeedMode.WPM -> pxPerSecond(scroll.speedWpm, contentHeightPx, wordCount)
+        SpeedMode.PIXELS -> scroll.speedPxPerSec
+    }
+
+    /**
+     * The pace that speed works out to, whichever unit the user chose. This is what the readouts
+     * and the duration estimate quote, so a script's estimated length stays honest in either mode.
+     */
+    fun effectiveWpm(
+        scroll: ScrollSettings,
+        contentHeightPx: Float,
+        wordCount: Int,
+    ): Int = when (scroll.speedMode) {
+        SpeedMode.WPM -> scroll.speedWpm
+        SpeedMode.PIXELS -> wpmFor(scroll.speedPxPerSec, contentHeightPx, wordCount)
     }
 
     /** How long [wordCount] words take to read at [speedWpm], in seconds. */

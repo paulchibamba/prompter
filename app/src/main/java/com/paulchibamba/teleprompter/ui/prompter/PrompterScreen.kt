@@ -27,9 +27,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.paulchibamba.teleprompter.domain.model.EndBehaviour
+import com.paulchibamba.teleprompter.domain.model.SpeedMode
 import com.paulchibamba.teleprompter.domain.scroll.WpmCalculator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * The prompter (docs/SPEC.md §5.3).
@@ -81,8 +83,8 @@ fun PrompterScreen(
         density = promptingDensity,
     )
 
-    val pixelsPerSecond = WpmCalculator.pxPerSecond(
-        speedWpm = uiState.scroll.speedWpm,
+    val pixelsPerSecond = WpmCalculator.effectivePxPerSecond(
+        scroll = uiState.scroll,
         contentHeightPx = contentHeightPx,
         wordCount = uiState.wordCount,
     )
@@ -128,10 +130,18 @@ fun PrompterScreen(
             EmptyScriptMessage(backgroundColor = Color(uiState.typography.backgroundColor))
         }
 
+        CountdownOverlay(
+            secondsRemaining = uiState.countdownRemaining,
+            textColor = Color(uiState.typography.textColor),
+            mirrorHorizontal = uiState.layout.mirrorHorizontal,
+            mirrorVertical = uiState.layout.mirrorVertical,
+        )
+
         ControlBar(
             isVisible = areControlsVisible,
-            isPlaying = uiState.isPlaying,
-            speedWpm = uiState.scroll.speedWpm,
+            // The countdown is part of starting, so the button that stops it is a pause.
+            isPlaying = uiState.isPlaying || uiState.isCountingDown,
+            speedLabel = speedLabelFor(uiState),
             fontSizeSp = uiState.typography.sizeSp,
             onPlayPause = viewModel::togglePlayPause,
             onRestart = {
@@ -146,6 +156,7 @@ fun PrompterScreen(
             onFontDown = viewModel::decreaseFontSize,
             isMirrored = uiState.layout.mirrorHorizontal || uiState.layout.mirrorVertical,
             onToggleMirror = viewModel::toggleBeamSplitterMirror,
+            onBlackout = viewModel::toggleBlackout,
             onNavigateBack = onNavigateBack,
             onOpenQuickSettings = {
                 areControlsVisible = false
@@ -154,6 +165,12 @@ fun PrompterScreen(
             onInteraction = { interactionCount++ },
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+
+        // Above everything, including the control bar: the point is that nothing on the glass is
+        // lit, and a tap anywhere brings it all back.
+        if (uiState.isBlackedOut) {
+            BlackoutOverlay(onRestore = viewModel::toggleBlackout)
+        }
     }
 
     if (isQuickSettingsOpen) {
@@ -168,9 +185,20 @@ fun PrompterScreen(
             onLayoutChanged = viewModel::updateLayout,
             isSafeAreaVisible = isSafeAreaVisible,
             onSafeAreaVisibilityChanged = { isSafeAreaVisible = it },
+            wordCount = uiState.wordCount,
+            contentHeightPx = contentHeightPx,
             onDismiss = { isQuickSettingsOpen = false },
         )
     }
+}
+
+/**
+ * The control bar quotes whichever unit the reader is working in, so a press of − or + reads as
+ * having done something in the same terms they set it in (docs/SPEC.md §8.1).
+ */
+private fun speedLabelFor(uiState: PrompterUiState): String = when (uiState.scroll.speedMode) {
+    SpeedMode.WPM -> "${uiState.scroll.speedWpm} wpm"
+    SpeedMode.PIXELS -> "${uiState.scroll.speedPxPerSec.roundToInt()} px/s"
 }
 
 /**

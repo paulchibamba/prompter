@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -48,6 +47,8 @@ fun QuickSettingsSheet(
     onLayoutChanged: (LayoutSettings) -> Unit,
     isSafeAreaVisible: Boolean,
     onSafeAreaVisibilityChanged: (Boolean) -> Unit,
+    wordCount: Int,
+    contentHeightPx: Float,
     onDismiss: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(QuickSettingsTab.TYPE) }
@@ -94,8 +95,11 @@ fun QuickSettingsSheet(
                         onSafeAreaVisibilityChanged = onSafeAreaVisibilityChanged,
                     )
 
-                    QuickSettingsTab.SCROLL -> NotYetBuiltMessage(
-                        "Speed mode, countdown and end behaviour arrive with the scroll step.",
+                    QuickSettingsTab.SCROLL -> ScrollSettingsTab(
+                        scroll = scroll,
+                        onScrollChanged = onScrollChanged,
+                        wordCount = wordCount,
+                        contentHeightPx = contentHeightPx,
                     )
                 }
             }
@@ -117,16 +121,6 @@ private fun QuickSettingsTabRow(
             )
         }
     }
-}
-
-@Composable
-private fun NotYetBuiltMessage(message: String) {
-    Text(
-        text = message,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(vertical = 24.dp),
-    )
 }
 
 enum class QuickSettingsTab(val label: String) {

@@ -1,5 +1,7 @@
 package com.paulchibamba.teleprompter.domain.scroll
 
+import com.paulchibamba.teleprompter.domain.model.ScrollSettings
+import com.paulchibamba.teleprompter.domain.model.SpeedMode
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -62,6 +64,40 @@ class WpmCalculatorTest {
         assertEquals(0, WpmCalculator.remainingSeconds(180, scrolledPx = 1200f, scrollableHeightPx = 1000f))
         assertEquals(180, WpmCalculator.remainingSeconds(180, scrolledPx = -50f, scrollableHeightPx = 1000f))
         assertEquals(180, WpmCalculator.remainingSeconds(180, scrolledPx = 0f, scrollableHeightPx = 0f))
+    }
+
+    @Test
+    fun `words per minute mode derives its pixel speed from the laid-out content`() {
+        val scroll = ScrollSettings(speedMode = SpeedMode.WPM, speedWpm = 120, speedPxPerSec = 999f)
+
+        assertEquals(
+            120f,
+            WpmCalculator.effectivePxPerSecond(scroll, contentHeightPx = 6000f, wordCount = 100),
+            TOLERANCE,
+        )
+        assertEquals(120, WpmCalculator.effectiveWpm(scroll, contentHeightPx = 6000f, wordCount = 100))
+    }
+
+    @Test
+    fun `pixels mode uses the stored speed and reports the pace it works out to`() {
+        val scroll = ScrollSettings(speedMode = SpeedMode.PIXELS, speedWpm = 999, speedPxPerSec = 120f)
+
+        assertEquals(
+            120f,
+            WpmCalculator.effectivePxPerSecond(scroll, contentHeightPx = 6000f, wordCount = 100),
+            TOLERANCE,
+        )
+        assertEquals(120, WpmCalculator.effectiveWpm(scroll, contentHeightPx = 6000f, wordCount = 100))
+    }
+
+    @Test
+    fun `pixels mode holds its speed when the font size changes, and the pace moves with it`() {
+        // The cost of the mode, stated as a test: the same px per second over taller content is a
+        // slower read. Words-per-minute mode is the default precisely because it does not do this.
+        val scroll = ScrollSettings(speedMode = SpeedMode.PIXELS, speedPxPerSec = 120f)
+
+        assertEquals(120, WpmCalculator.effectiveWpm(scroll, contentHeightPx = 6000f, wordCount = 100))
+        assertEquals(60, WpmCalculator.effectiveWpm(scroll, contentHeightPx = 12000f, wordCount = 100))
     }
 
     @Test

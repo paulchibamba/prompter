@@ -17,6 +17,8 @@ import com.paulchibamba.teleprompter.domain.usecase.GetScript
 import com.paulchibamba.teleprompter.ui.navigation.Destination
 import com.paulchibamba.teleprompter.ui.prompterContainer
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -51,6 +53,9 @@ class PrompterViewModel(
     private val pendingTypography = MutableStateFlow<TypographySettings?>(null)
     private val pendingScroll = MutableStateFlow<ScrollSettings?>(null)
     private val pendingLayout = MutableStateFlow<LayoutSettings?>(null)
+
+    /** The countdown in progress, if any. Held so pausing can abandon it rather than outrun it. */
+    private var countdownJob: Job? = null
 
     init {
         loadScript()
@@ -123,15 +128,49 @@ class PrompterViewModel(
     }
 
     fun togglePlayPause() {
-        _uiState.update { it.copy(isPlaying = !it.isPlaying) }
+        val state = _uiState.value
+        if (state.isPlaying || state.isCountingDown) pause() else play()
     }
 
+    /** Stops the text, and abandons a countdown that has not finished. */
     fun pause() {
-        _uiState.update { it.copy(isPlaying = false) }
+        countdownJob?.cancel()
+        _uiState.update { it.copy(isPlaying = false, countdownRemaining = 0) }
     }
 
+    /** Starts the text, after the countdown if one is configured (docs/SPEC.md §8.4). */
     fun play() {
-        _uiState.update { it.copy(isPlaying = true) }
+        countdownJob?.cancel()
+        val countdownSeconds = _uiState.value.scroll.countdownSeconds
+        if (countdownSeconds <= 0) {
+            _uiState.update { it.copy(isPlaying = true) }
+            return
+        }
+        countdownJob = viewModelScope.launch { countDownThenPlay(countdownSeconds) }
+    }
+
+    private suspend fun countDownThenPlay(seconds: Int) {
+        for (remaining in seconds downTo 1) {
+            _uiState.update { it.copy(countdownRemaining = remaining, isPlaying = false) }
+            delay(ONE_SECOND_MILLIS)
+        }
+        _uiState.update { it.copy(countdownRemaining = 0, isPlaying = true) }
+    }
+
+    /**
+     * Fills the screen black and stops the text (docs/SPEC.md §8.4).
+     *
+     * Restoring does not resume playing. That follows the same rule as a manual scrub: the reader
+     * decides when the take starts again, and text that begins moving on its own the moment the
+     * glass lights up is worse than one extra press.
+     */
+    fun toggleBlackout() {
+        if (_uiState.value.isBlackedOut) {
+            _uiState.update { it.copy(isBlackedOut = false) }
+            return
+        }
+        pause()
+        _uiState.update { it.copy(isBlackedOut = true) }
     }
 
     fun increaseSpeed() = stepSpeed(steps = 1)
@@ -161,9 +200,9 @@ class PrompterViewModel(
         }
     }
 
+    /** Moves whichever unit the reader is working in — words per minute, or pixels per second. */
     private fun stepSpeed(steps: Int) {
-        val current = _uiState.value.scroll
-        updateScroll(current.copy(speedWpm = current.steppedWpm(steps)))
+        updateScrollSettings(_uiState.value.scroll.steppedSpeed(steps))
     }
 
     private fun stepFontSize(stepSp: Float) {
@@ -177,8 +216,6 @@ class PrompterViewModel(
         _uiState.update { it.copy(scroll = coerced) }
         pendingScroll.value = coerced
     }
-
-    private fun updateScroll(settings: ScrollSettings) = updateScrollSettings(settings)
 
     private fun loadScript() {
         viewModelScope.launch {
@@ -213,6 +250,7 @@ class PrompterViewModel(
         /** Matches the spec's stepper granularity for size (docs/SPEC.md §6.2). */
         private const val FONT_STEP_SP = 2f
         private const val SETTINGS_WRITE_DEBOUNCE_MILLIS = 200L
+        private const val ONE_SECOND_MILLIS = 1_000L
 
         val Factory = viewModelFactory {
             initializer {

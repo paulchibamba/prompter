@@ -45,6 +45,21 @@ data class ScrollSettings(
     /** The speed one [speedStepWpm] press up or down, clamped — used by the remote's speed actions. */
     fun steppedWpm(steps: Int): Int = (speedWpm + steps * speedStepWpm).coerceIn(MIN_WPM, MAX_WPM)
 
+    /** The same press, in pixels mode. */
+    fun steppedPxPerSec(steps: Int): Float =
+        (speedPxPerSec + steps * SPEED_STEP_PX_PER_SEC).coerceIn(MIN_PX_PER_SEC, MAX_PX_PER_SEC)
+
+    /**
+     * One press of slower or faster, moving whichever unit is currently in charge.
+     *
+     * The control bar and the remote both press the same button regardless of [speedMode], so the
+     * decision about which number moves belongs here rather than at every call site.
+     */
+    fun steppedSpeed(steps: Int): ScrollSettings = when (speedMode) {
+        SpeedMode.WPM -> copy(speedWpm = steppedWpm(steps))
+        SpeedMode.PIXELS -> copy(speedPxPerSec = steppedPxPerSec(steps))
+    }
+
     companion object {
         /** [brightnessOverride] sentinel meaning "leave the system brightness alone". */
         const val BRIGHTNESS_SYSTEM = -1f
@@ -55,6 +70,13 @@ data class ScrollSettings(
         const val MAX_PX_PER_SEC = 2000f
         const val MIN_STEP_WPM = 1
         const val MAX_STEP_WPM = 50
+
+        /**
+         * How far one press moves the speed in pixels mode. Fixed rather than stored: pixels mode
+         * is the escape hatch for someone who already knows the number they want, and a second
+         * configurable step size would be one more thing to set for the rarer of the two modes.
+         */
+        const val SPEED_STEP_PX_PER_SEC = 5f
         const val MIN_RAMP_MILLIS = 0
         const val MAX_RAMP_MILLIS = 3000
         const val MIN_COUNTDOWN_SECONDS = 0

@@ -133,6 +133,26 @@ class SettingsTest {
     }
 
     @Test
+    fun `stepping the speed moves whichever unit is selected`() {
+        val inWpm = ScrollSettings(speedMode = SpeedMode.WPM, speedWpm = 140, speedPxPerSec = 60f)
+        val steppedInWpm = inWpm.steppedSpeed(1)
+        assertEquals(150, steppedInWpm.speedWpm)
+        assertEquals(60f, steppedInWpm.speedPxPerSec, TOLERANCE)
+
+        val inPixels = inWpm.copy(speedMode = SpeedMode.PIXELS)
+        val steppedInPixels = inPixels.steppedSpeed(1)
+        assertEquals(140, steppedInPixels.speedWpm)
+        assertEquals(60f + ScrollSettings.SPEED_STEP_PX_PER_SEC, steppedInPixels.speedPxPerSec, TOLERANCE)
+    }
+
+    @Test
+    fun `stepping pixels per second stops at the limits`() {
+        val settings = ScrollSettings(speedMode = SpeedMode.PIXELS, speedPxPerSec = 60f)
+        assertEquals(ScrollSettings.MIN_PX_PER_SEC, settings.steppedPxPerSec(-1000), TOLERANCE)
+        assertEquals(ScrollSettings.MAX_PX_PER_SEC, settings.steppedPxPerSec(1000), TOLERANCE)
+    }
+
+    @Test
     fun `a preset coerces every block it holds`() {
         val preset = Preset(
             name = "Broken import",
