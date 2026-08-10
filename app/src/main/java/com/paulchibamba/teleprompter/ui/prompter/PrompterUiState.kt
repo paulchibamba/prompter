@@ -15,6 +15,9 @@ data class PrompterUiState(
     /** Denormalised on the script; the scroll pace is derived from it. */
     val wordCount: Int = 0,
     val isPlaying: Boolean = false,
+    /** Seconds still to show in the pre-roll; 0 when no countdown is running (docs/SPEC.md §8.4). */
+    val countdownRemaining: Int = 0,
+    val isBlackedOut: Boolean = false,
     val typography: TypographySettings = TypographySettings(),
     val layout: LayoutSettings = LayoutSettings(),
     val scroll: ScrollSettings = ScrollSettings(),
@@ -22,4 +25,7 @@ data class PrompterUiState(
 ) {
     val hasContent: Boolean
         get() = paragraphs.any { it.isNotBlank() }
+
+    val isCountingDown: Boolean
+        get() = countdownRemaining > 0
 }

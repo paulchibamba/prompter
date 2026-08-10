@@ -32,7 +32,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 - [x] **Step 14** — Margins, measure & safe-area preview
 - [x] **Step 15** — Reading line & edge fade
 - [x] **Step 16** — Mirroring & orientation
-- [ ] **Step 17** — Scroll settings
+- [x] **Step 17** — Scroll settings
 - [ ] **Step 18** — Presets management
 - [ ] **Step 19** — Prompter gestures
 
@@ -99,6 +99,33 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) is **not yet applied** by the prompter, which
   still reads the global settings. Presets can be assigned from the library but have no effect until the
   presets step wires them through.
+- **Step 17** — **time remaining is deferred to the progress-scrubber step.** `docs/SPEC.md` §8.1 asks for
+  estimated total duration *and* time remaining, live. Total duration is exact from the word count and the
+  pace, and it is shown. Time remaining needs a reading position, and the only honest source of one is the
+  item the reading line is actually sitting on — which is precisely what the scrubber step has to model. An
+  estimate from `firstVisibleItemIndex` would be off by a lead-in's worth of words, constantly, in a readout
+  whose whole value is being trusted.
+- **Step 17** — pixels mode steps by a fixed 5px/s rather than a stored step size. `ScrollSettings` carries
+  `speedStepWpm` and the spec adds no pixel equivalent; pixels mode is the escape hatch for someone who
+  already knows the number they want. The consequence is visible in the sheet: the "Speed step" slider is
+  shown only in words-per-minute mode, and the pixel step is stated in the speed slider's subtitle instead.
+- **Step 17** — **the countdown is drawn inside the mirror**, which contradicts the layer order in §5.3 where
+  it sits above the mirrored surface with the rest of the chrome. The countdown is the cue to draw breath, so
+  it is read by the talent through the glass, not by whoever is holding the phone — the opposite of the
+  control bar, and the same reasoning Step 16 used to put the control bar outside.
+- **Step 17** — restoring from blackout does not resume playing. §8.4 says "one tap to restore" without
+  saying restore to what; it also says a manual scrub must not silently resume. Text that starts moving the
+  instant the glass lights up is the same surprise, so blackout follows the same rule.
+- **Step 17** — the control bar's rows became `FlowRow`. Adding blackout makes eight 48dp targets, which do
+  not fit across a narrow phone; shrinking them is the wrong trade for a control used at arm's length in a
+  rig, often in the dark. On this device the row wraps and the settings button drops to a second line.
+- **Step 17** — `SwitchRow` moved to `ui/components`. The Scroll tab needed the same title/subtitle/switch
+  row the Layout tab had built privately, and three more bespoke copies of it were already in that file.
+- **Step 17** — **not verified on device:** that a press of − or + moves the speed by exactly 5px/s in pixels
+  mode. The device dropped its wireless-debug connection mid-check. The arithmetic is unit-tested
+  (`steppedSpeed`, `steppedPxPerSec`), and the control bar was confirmed reading "60 px/s" from the same
+  state. Verified on device: the whole Scroll tab, the words↔pixels conversion subtitle and duration readout
+  in both modes, the 3-2-1 countdown, and blackout including that it stays paused on restore.
 - **Step 16** — `configChanges` and `launchMode="singleTop"` were finally added to the manifest, which
   Step 2 was meant to do. Without them the activity is recreated on every rotation. With them, rotation
   preserves the reading position for free — verified: lines 003–006 before, 004–005 after rotating to

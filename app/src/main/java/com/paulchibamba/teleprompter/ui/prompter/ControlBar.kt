@@ -6,14 +6,18 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -51,7 +55,7 @@ import androidx.compose.ui.unit.dp
 fun ControlBar(
     isVisible: Boolean,
     isPlaying: Boolean,
-    speedWpm: Int,
+    speedLabel: String,
     fontSizeSp: Float,
     onPlayPause: () -> Unit,
     onRestart: () -> Unit,
@@ -63,6 +67,7 @@ fun ControlBar(
     onFontDown: () -> Unit,
     isMirrored: Boolean,
     onToggleMirror: () -> Unit,
+    onBlackout: () -> Unit,
     onNavigateBack: () -> Unit,
     onOpenQuickSettings: () -> Unit,
     onInteraction: () -> Unit,
@@ -98,11 +103,12 @@ fun ControlBar(
                 onNudgeDown = resettingIdleTimer(onNudgeDown),
                 isMirrored = isMirrored,
                 onToggleMirror = resettingIdleTimer(onToggleMirror),
+                onBlackout = onBlackout,
                 onNavigateBack = onNavigateBack,
                 onOpenQuickSettings = resettingIdleTimer(onOpenQuickSettings),
             )
             AdjustmentRow(
-                speedWpm = speedWpm,
+                speedLabel = speedLabel,
                 fontSizeSp = fontSizeSp,
                 onSpeedUp = resettingIdleTimer(onSpeedUp),
                 onSpeedDown = resettingIdleTimer(onSpeedDown),
@@ -122,6 +128,7 @@ private fun TransportRow(
     onNudgeDown: () -> Unit,
     isMirrored: Boolean,
     onToggleMirror: () -> Unit,
+    onBlackout: () -> Unit,
     onNavigateBack: () -> Unit,
     onOpenQuickSettings: () -> Unit,
 ) {
@@ -148,6 +155,7 @@ private fun TransportRow(
             onClick = onNudgeDown,
         )
         MirrorButton(isMirrored = isMirrored, onClick = onToggleMirror)
+        BlackoutButton(onClick = onBlackout)
         ControlButton(
             icon = Icons.Filled.Settings,
             description = "Quick settings",
@@ -158,7 +166,7 @@ private fun TransportRow(
 
 @Composable
 private fun AdjustmentRow(
-    speedWpm: Int,
+    speedLabel: String,
     fontSizeSp: Float,
     onSpeedUp: () -> Unit,
     onSpeedDown: () -> Unit,
@@ -167,7 +175,7 @@ private fun AdjustmentRow(
 ) {
     ControlRow {
         StepperGroup(
-            label = "$speedWpm wpm",
+            label = speedLabel,
             decreaseDescription = "Slower",
             increaseDescription = "Faster",
             onDecrease = onSpeedDown,
@@ -209,6 +217,30 @@ private fun MirrorButton(isMirrored: Boolean, onClick: () -> Unit) {
 }
 
 /**
+ * Blackout: kill the glass between takes (docs/SPEC.md §8.4).
+ *
+ * Drawn as an unlit circle rather than an icon, because that is exactly what it does to the screen.
+ * The core icon set has nothing that says "go dark", and one outlined circle is not worth pulling
+ * in the extended set for.
+ */
+@Composable
+private fun BlackoutButton(onClick: () -> Unit) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(TOUCH_TARGET)
+            .semantics { contentDescription = "Blackout" },
+    ) {
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .border(2.dp, CONTROL_TINT, CircleShape)
+                .background(Color.Black, CircleShape),
+        )
+    }
+}
+
+/**
  * A minus/readout/plus trio. The readout is live, so the reader can see what a press did without
  * looking away from the glass for long.
  */
@@ -241,11 +273,16 @@ private fun StepperGroup(
     }
 }
 
+/**
+ * Wraps rather than squeezing. Eight 48dp targets do not fit across a narrow phone, and shrinking
+ * them is the wrong trade for a control that gets used at arm's length in a rig, often in the dark.
+ */
 @Composable
 private fun ControlRow(content: @Composable () -> Unit) {
-    Row(
+    FlowRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
         content()
@@ -284,7 +321,7 @@ private fun PauseGlyph() {
         modifier = Modifier.size(36.dp).padding(vertical = 6.dp),
     ) {
         repeat(2) {
-            androidx.compose.foundation.layout.Box(
+            Box(
                 modifier = Modifier
                     .size(width = 9.dp, height = 24.dp)
                     .background(CONTROL_TINT, RoundedCornerShape(2.dp)),

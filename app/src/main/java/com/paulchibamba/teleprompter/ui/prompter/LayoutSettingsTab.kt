@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,6 +24,7 @@ import com.paulchibamba.teleprompter.domain.model.LineStyle
 import com.paulchibamba.teleprompter.domain.model.OrientLock
 import com.paulchibamba.teleprompter.ui.components.LabelledSlider
 import com.paulchibamba.teleprompter.ui.components.SegmentedOptionRow
+import com.paulchibamba.teleprompter.ui.components.SwitchRow
 import kotlin.math.roundToInt
 
 /**
@@ -98,29 +98,6 @@ private fun OrientationControls(
                 OrientLock.LANDSCAPE -> "Landscape"
             },
         )
-    }
-}
-
-@Composable
-private fun SwitchRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.titleSmall)
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -283,20 +260,12 @@ private const val OPAQUE_ALPHA = -0x1000000L
  */
 @Composable
 private fun SafeAreaToggle(isVisible: Boolean, onChanged: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = "Show safe area", style = MaterialTheme.typography.titleSmall)
-            Text(
-                text = "Hold the phone in the rig and match the box to the glass.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = isVisible, onCheckedChange = onChanged)
-    }
+    SwitchRow(
+        title = "Show safe area",
+        subtitle = "Hold the phone in the rig and match the box to the glass.",
+        checked = isVisible,
+        onCheckedChange = onChanged,
+    )
 }
 
 /**
@@ -308,20 +277,12 @@ private fun SideMarginControls(
     layout: LayoutSettings,
     onChanged: (LayoutSettings) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "Link side margins",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.weight(1f),
-        )
-        Switch(
-            checked = layout.linkLeftRight,
-            onCheckedChange = { onChanged(layout.copy(linkLeftRight = it)) },
-        )
-    }
+    SwitchRow(
+        title = "Link side margins",
+        subtitle = "Unlink for glass that is not centred over the phone.",
+        checked = layout.linkLeftRight,
+        onCheckedChange = { onChanged(layout.copy(linkLeftRight = it)) },
+    )
 
     if (layout.linkLeftRight) {
         MarginSlider(
@@ -389,29 +350,18 @@ private fun LineLengthControls(
 ) {
     val isCapped = layout.maxMeasureCh > LayoutSettings.MEASURE_OFF
 
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = "Limit line length", style = MaterialTheme.typography.titleSmall)
-            Text(
-                text = "Long lines are where the eye loses its place on the way back.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+    SwitchRow(
+        title = "Limit line length",
+        subtitle = "Long lines are where the eye loses its place on the way back.",
+        checked = isCapped,
+        onCheckedChange = { enabled ->
+            onChanged(
+                layout.copy(
+                    maxMeasureCh = if (enabled) DEFAULT_MEASURE_CH else LayoutSettings.MEASURE_OFF,
+                ),
             )
-        }
-        Switch(
-            checked = isCapped,
-            onCheckedChange = { enabled ->
-                onChanged(
-                    layout.copy(
-                        maxMeasureCh = if (enabled) DEFAULT_MEASURE_CH else LayoutSettings.MEASURE_OFF,
-                    ),
-                )
-            },
-        )
-    }
+        },
+    )
 
     if (isCapped) {
         LabelledSlider(
