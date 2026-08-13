@@ -72,7 +72,7 @@ class LibraryViewModel(
         isSearchOpen,
     ) { scripts, speedWpm, presets, query, searchOpen ->
         LibraryUiState(
-            rows = scripts.map { script -> script.toRow(speedWpm) },
+            rows = scripts.map { script -> script.toRow(script.paceWpm(presets, speedWpm)) },
             presets = presets.map { preset -> preset.toOption() },
             searchQuery = query,
             isSearchOpen = searchOpen,
@@ -142,6 +142,16 @@ class LibraryViewModel(
             action(script)
         }
     }
+
+    /**
+     * The pace this particular script will actually be read at.
+     *
+     * A script assigned a preset prompts at that preset's speed rather than at the global default,
+     * so estimating it at the global one would quote a duration the script never takes — the more
+     * misleading the further the preset's speed is from the default.
+     */
+    private fun Script.paceWpm(presets: List<Preset>, globalSpeedWpm: Int): Int =
+        presets.firstOrNull { it.id == presetId }?.scroll?.speedWpm ?: globalSpeedWpm
 
     private fun Script.toRow(speedWpm: Int): ScriptRowUi = ScriptRowUi(
         id = id,

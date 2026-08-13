@@ -21,6 +21,15 @@ data class PrompterUiState(
     val typography: TypographySettings = TypographySettings(),
     val layout: LayoutSettings = LayoutSettings(),
     val scroll: ScrollSettings = ScrollSettings(),
+    /**
+     * The preset this script is assigned, if any (docs/SPEC.md §3.1, §4). A name here means the
+     * settings above came from that preset rather than from the global defaults — and that
+     * adjusting them changes this session only.
+     */
+    val presetId: Long? = null,
+    val presetName: String? = null,
+    /** Built-ins are read-only, so the "save back to this preset" action is not offered for them. */
+    val isPresetBuiltIn: Boolean = false,
     val isLoading: Boolean = true,
 ) {
     val hasContent: Boolean

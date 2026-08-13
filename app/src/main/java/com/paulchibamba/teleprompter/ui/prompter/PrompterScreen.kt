@@ -49,6 +49,7 @@ fun PrompterScreen(
     ),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val presets by viewModel.presets.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -187,6 +188,16 @@ fun PrompterScreen(
             onSafeAreaVisibilityChanged = { isSafeAreaVisible = it },
             wordCount = uiState.wordCount,
             contentHeightPx = contentHeightPx,
+            presetShortcuts = {
+                PresetShortcuts(
+                    presets = presets,
+                    assignedPresetName = uiState.presetName,
+                    isAssignedPresetBuiltIn = uiState.isPresetBuiltIn,
+                    onApplyPreset = viewModel::applyPresetToSession,
+                    onSaveAsNewPreset = viewModel::saveSessionAsPreset,
+                    onSaveToAssignedPreset = viewModel::saveSessionToAssignedPreset,
+                )
+            },
             onDismiss = { isQuickSettingsOpen = false },
         )
     }

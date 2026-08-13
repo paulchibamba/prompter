@@ -10,6 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -94,6 +95,56 @@ class PresetUseCasesTest {
         assertFalse(saved.isBuiltIn)
         assertEquals(64f, saved.typography.sizeSp, 0f)
         assertEquals(180, saved.scroll.speedWpm)
+    }
+
+    @Test
+    fun `updating a preset takes the current settings and keeps its name`() = runTest {
+        val presets = FakePresetRepository()
+        val settings = FakeSettingsRepository()
+        val id = SavePreset(presets)(Preset(name = "Podcast", typography = TypographySettings(sizeSp = 40f)))
+        settings.setTypography(TypographySettings(sizeSp = 96f))
+        settings.setScroll(ScrollSettings(speedWpm = 200))
+
+        assertTrue(UpdatePresetFromCurrentSettings(presets, settings)(id))
+
+        val updated = presets.byId(id)!!
+        assertEquals("Podcast", updated.name)
+        assertEquals(96f, updated.typography.sizeSp, 0f)
+        assertEquals(200, updated.scroll.speedWpm)
+    }
+
+    @Test
+    fun `updating a built-in is refused rather than quietly making a second copy of it`() = runTest {
+        val presets = FakePresetRepository()
+        val settings = FakeSettingsRepository()
+        presets.ensureBuiltIns()
+        settings.setTypography(TypographySettings(sizeSp = 96f))
+
+        assertFalse(UpdatePresetFromCurrentSettings(presets, settings)(BuiltInPresets.STUDIO_ID))
+
+        assertEquals(BuiltInPresets.studio, presets.byId(BuiltInPresets.STUDIO_ID))
+        assertEquals(BuiltInPresets.all.size, ObservePresets(presets)().first().size)
+    }
+
+    @Test
+    fun `duplicating a built-in gives an editable copy of it`() = runTest {
+        val presets = FakePresetRepository()
+        presets.ensureBuiltIns()
+
+        val id = DuplicatePreset(presets, SavePreset(presets))(BuiltInPresets.BRIGHT_ROOM_ID)!!
+
+        val copy = presets.byId(id)!!
+        assertEquals("Bright room ${DuplicatePreset.COPY_SUFFIX}", copy.name)
+        assertFalse(copy.isBuiltIn)
+        assertEquals(BuiltInPresets.brightRoom.typography, copy.typography)
+        assertEquals(BuiltInPresets.brightRoom, presets.byId(BuiltInPresets.BRIGHT_ROOM_ID))
+    }
+
+    @Test
+    fun `duplicating a preset that has gone changes nothing`() = runTest {
+        val presets = FakePresetRepository()
+
+        assertNull(DuplicatePreset(presets, SavePreset(presets))(9999L))
     }
 
     @Test

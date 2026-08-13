@@ -13,6 +13,7 @@ import com.paulchibamba.teleprompter.domain.repository.SettingsRepository
 import com.paulchibamba.teleprompter.domain.usecase.ApplyPreset
 import com.paulchibamba.teleprompter.domain.usecase.DeletePreset
 import com.paulchibamba.teleprompter.domain.usecase.DeleteScript
+import com.paulchibamba.teleprompter.domain.usecase.DuplicatePreset
 import com.paulchibamba.teleprompter.domain.usecase.DuplicateScript
 import com.paulchibamba.teleprompter.domain.usecase.GetPreset
 import com.paulchibamba.teleprompter.domain.usecase.GetScript
@@ -24,6 +25,7 @@ import com.paulchibamba.teleprompter.domain.usecase.SaveCurrentSettingsAsPreset
 import com.paulchibamba.teleprompter.domain.usecase.SavePreset
 import com.paulchibamba.teleprompter.domain.usecase.SaveScript
 import com.paulchibamba.teleprompter.domain.usecase.SaveScrollPosition
+import com.paulchibamba.teleprompter.domain.usecase.UpdatePresetFromCurrentSettings
 
 /**
  * The app's object graph, by hand (see `docs/ARCHITECTURE.md`, "DI: none"). Holds the singletons —
@@ -62,7 +64,11 @@ class AppContainer(context: Context) {
     val savePreset: SavePreset by lazy { SavePreset(presetRepository) }
     val deletePreset: DeletePreset by lazy { DeletePreset(presetRepository) }
     val applyPreset: ApplyPreset by lazy { ApplyPreset(presetRepository, settingsRepository) }
+    val duplicatePreset: DuplicatePreset by lazy { DuplicatePreset(presetRepository, savePreset) }
     val saveCurrentSettingsAsPreset: SaveCurrentSettingsAsPreset by lazy {
         SaveCurrentSettingsAsPreset(settingsRepository, savePreset)
+    }
+    val updatePresetFromCurrentSettings: UpdatePresetFromCurrentSettings by lazy {
+        UpdatePresetFromCurrentSettings(presetRepository, settingsRepository)
     }
 }

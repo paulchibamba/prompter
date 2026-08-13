@@ -69,6 +69,10 @@ class ApplyPreset(
 /**
  * Captures the current global defaults as a new named preset — the "save what I have" half of
  * preset management, and the only writer that reads settings and presets together.
+ *
+ * It reads the *stored* defaults, which makes it right for the settings screen and wrong for the
+ * prompter: a script with an assigned preset is read from settings that are deliberately never
+ * written, so saving from there builds the [Preset] from the live session instead.
  */
 class SaveCurrentSettingsAsPreset(
     private val settings: SettingsRepository,
@@ -82,4 +86,54 @@ class SaveCurrentSettingsAsPreset(
             scroll = settings.scroll.first(),
         ),
     )
+}
+
+/**
+ * Overwrites an existing preset with the current global defaults, keeping its name — "I have
+ * adjusted things and this is what Podcast should mean from now on".
+ *
+ * Refused on a built-in, returning false. Letting it through would go via [SavePreset]'s
+ * copy-on-write and leave the user with two presets called "Studio", which is a worse outcome than
+ * the action simply not being offered.
+ */
+class UpdatePresetFromCurrentSettings(
+    private val presets: PresetRepository,
+    private val settings: SettingsRepository,
+) {
+    suspend operator fun invoke(id: Long): Boolean {
+        val preset = presets.byId(id) ?: return false
+        if (preset.isBuiltIn) return false
+        presets.upsert(
+            preset.copy(
+                typography = settings.typography.first(),
+                layout = settings.layout.first(),
+                scroll = settings.scroll.first(),
+            ),
+        )
+        return true
+    }
+}
+
+/**
+ * Copies a preset under a new name. This is how a built-in becomes editable: the three shipped
+ * presets are read-only, so starting from one means taking a copy of it first.
+ */
+class DuplicatePreset(
+    private val presets: PresetRepository,
+    private val savePreset: SavePreset,
+) {
+    suspend operator fun invoke(id: Long): Long? {
+        val original = presets.byId(id) ?: return null
+        return savePreset(
+            original.copy(
+                id = 0L,
+                name = "${original.name} $COPY_SUFFIX",
+                isBuiltIn = false,
+            ),
+        )
+    }
+
+    companion object {
+        const val COPY_SUFFIX = "(copy)"
+    }
 }
