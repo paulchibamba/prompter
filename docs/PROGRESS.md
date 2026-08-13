@@ -33,7 +33,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 - [x] **Step 15** — Reading line & edge fade
 - [x] **Step 16** — Mirroring & orientation
 - [x] **Step 17** — Scroll settings
-- [ ] **Step 18** — Presets management
+- [x] **Step 18** — Presets management
 - [ ] **Step 19** — Prompter gestures
 
 ## Phase E — The remote
@@ -96,9 +96,43 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 8** — Import is present but disabled in the editor's bottom bar, matching the library.
 - **Step 9** — `ui/theme/PrompterFonts.kt` is a seam that currently resolves every `fontId` to the device
   font. The bundled families arrive with the font step; nothing downstream changes when they do.
-- **Step 9** — a script's assigned preset (`Script.presetId`) is **not yet applied** by the prompter, which
-  still reads the global settings. Presets can be assigned from the library but have no effect until the
-  presets step wires them through.
+- **Step 9** — a script's assigned preset (`Script.presetId`) was **not applied** by the prompter, which read
+  the global settings regardless. Closed in Step 18: the prompter now seeds from the assigned preset and
+  does not start the global settings observer at all for such a script.
+- **Step 18** — **a mid-take adjustment on a script with an assigned preset is session-only.** One rule
+  governs the prompter: it writes to the global defaults if and only if the script has no assigned preset.
+  The alternatives were all worse. Writing back to the preset moves every other script assigned to it — and
+  on a built-in goes through `SavePreset`'s copy-on-write, silently re-pointing the script at a second
+  "Studio". Detaching on first edit throws away an assignment the user made deliberately. Storing overrides
+  on the script would need three JSON columns and a v2→v3 migration, and would make a rig-shaped setting
+  script-shaped, so the same recalibration has to be done once per script. The sheet states the rule in
+  words, and offers "Save these settings to <preset>" for when it is meant permanently.
+- **Step 18** — `SaveCurrentSettingsAsPreset` is deliberately **not** used from the prompter. It reads the
+  stored defaults, which for a preset-assigned script are not what is on screen — the session values are
+  deliberately never written. The sheet's save builds the `Preset` from the live UI state instead.
+- **Step 18** — the presets screen lives under Settings per §5.4, but the sheet also carries "Apply a
+  preset…" and "Save these settings as a preset…" at the foot of its Type tab. §5.3 calls the sheet the
+  primary settings surface, and it is the only place type can be judged against real text on real glass —
+  which is exactly when a preset is worth saving.
+- **Step 18** — "Save these settings to <preset>" is offered only for a **user** preset. On a built-in the
+  save would take a copy and leave the script pointing at it, which is the silent re-pointing this step
+  otherwise avoids. Built-ins offer Duplicate instead, and their Rename, Update and Delete are disabled.
+- **Step 18** — the library's duration estimate now uses the **script's own** pace. Making presets take
+  effect broke the old assumption that every script reads at the global wpm: a script assigned Bright room
+  was quoted 1:58 at the global 110wpm while actually reading 1:33 at the preset's 140. Verified both ways
+  on device.
+- **Step 18** — `PresetsEvent.PresetDeleted` carries the whole `Preset` rather than the ViewModel holding an
+  `undoableDeletion` field. Snackbars queue, so deleting a second preset while the first one's snackbar is
+  still up overwrites such a field and Undo restores something other than the name on screen — observed on
+  device during this step. **`LibraryViewModel` still has the original field-based version for scripts and
+  the same flaw**; worth aligning when that file is next touched.
+- **Step 18** — `SettingsScreen` stops being a placeholder but stays deliberately thin: Presets, Remote &
+  buttons, Key sniffer. §5.4 also lists global defaults, backup and About. Global defaults would duplicate
+  the quick sheet, which already writes them and previews them on real text; backup is the import/export
+  step and About is the accessibility step. `PlaceholderScaffold` remains for the two remote screens.
+- **Step 18** — an unrelated one-character typo was reverted along the way: `MainActivity` had been renamed
+  `cMainActivity` in the working tree, which compiled fine but failed `lintDebug` on the manifest's
+  `.MainActivity` reference and would have crashed on launch.
 - **Step 17** — **time remaining is deferred to the progress-scrubber step.** `docs/SPEC.md` §8.1 asks for
   estimated total duration *and* time remaining, live. Total duration is exact from the word count and the
   pace, and it is shown. Time remaining needs a reading position, and the only honest source of one is the

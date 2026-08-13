@@ -25,6 +25,10 @@ sealed interface Destination {
     @Serializable
     data object Settings : Destination
 
+    /** Managing named settings bundles: save, rename, apply, delete. */
+    @Serializable
+    data object Presets : Destination
+
     /** Binding remote buttons to actions. */
     @Serializable
     data object RemoteMapping : Destination

@@ -8,22 +8,29 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import android.net.Uri
 import androidx.navigation.toRoute
 import com.paulchibamba.teleprompter.domain.model.LayoutSettings
+import com.paulchibamba.teleprompter.domain.model.Preset
 import com.paulchibamba.teleprompter.domain.model.ScrollSettings
 import com.paulchibamba.teleprompter.domain.model.TypographySettings
 import com.paulchibamba.teleprompter.data.io.CustomFontStore
 import com.paulchibamba.teleprompter.domain.repository.SettingsRepository
 import com.paulchibamba.teleprompter.domain.text.ScriptParser
+import com.paulchibamba.teleprompter.domain.usecase.ApplyPreset
+import com.paulchibamba.teleprompter.domain.usecase.GetPreset
 import com.paulchibamba.teleprompter.domain.usecase.GetScript
+import com.paulchibamba.teleprompter.domain.usecase.ObservePresets
+import com.paulchibamba.teleprompter.domain.usecase.SavePreset
 import com.paulchibamba.teleprompter.ui.navigation.Destination
 import com.paulchibamba.teleprompter.ui.prompterContainer
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -39,9 +46,17 @@ import kotlinx.coroutines.launch
 class PrompterViewModel(
     private val scriptId: Long,
     private val getScript: GetScript,
+    private val getPreset: GetPreset,
+    private val savePreset: SavePreset,
+    private val applyPreset: ApplyPreset,
+    observePresets: ObservePresets,
     private val settingsRepository: SettingsRepository,
     private val customFontStore: CustomFontStore,
 ) : ViewModel() {
+
+    /** The presets the sheet's "apply a preset" dialog offers. */
+    val presets = observePresets()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PRESETS_STOP_TIMEOUT_MILLIS), emptyList())
 
     private val _uiState = MutableStateFlow(PrompterUiState())
     val uiState = _uiState.asStateFlow()
@@ -58,12 +73,22 @@ class PrompterViewModel(
     private var countdownJob: Job? = null
 
     init {
-        loadScript()
-        observeSettings()
+        loadScriptAndResolveSettings()
         persistTypographyAfterAdjustingStops()
         persistScrollAfterAdjustingStops()
         persistLayoutAfterAdjustingStops()
     }
+
+    /**
+     * Whether an adjustment made here is allowed to reach storage.
+     *
+     * A script with an assigned preset reads through a named, shared setting that may well be one
+     * of the read-only built-ins, so a tweak made to cope with today's light stays in this session
+     * — it never rewrites the preset, and it never touches the global defaults. Saving it is an
+     * explicit action instead (see [saveSessionAsPreset]).
+     */
+    private val isFollowingGlobalDefaults: Boolean
+        get() = _uiState.value.presetName == null
 
     /**
      * Applies a typography change to the visible text immediately and stores it a moment later.
@@ -74,7 +99,7 @@ class PrompterViewModel(
     fun updateTypography(settings: TypographySettings) {
         val coerced = settings.coerced()
         _uiState.update { it.copy(typography = coerced) }
-        pendingTypography.value = coerced
+        if (isFollowingGlobalDefaults) pendingTypography.value = coerced
     }
 
     /**
@@ -97,7 +122,7 @@ class PrompterViewModel(
     fun updateLayout(settings: LayoutSettings) {
         val coerced = settings.coerced()
         _uiState.update { it.copy(layout = coerced) }
-        pendingLayout.value = coerced
+        if (isFollowingGlobalDefaults) pendingLayout.value = coerced
     }
 
     private fun persistLayoutAfterAdjustingStops() {
@@ -214,10 +239,75 @@ class PrompterViewModel(
     fun updateScrollSettings(settings: ScrollSettings) {
         val coerced = settings.coerced()
         _uiState.update { it.copy(scroll = coerced) }
-        pendingScroll.value = coerced
+        if (isFollowingGlobalDefaults) pendingScroll.value = coerced
     }
 
-    private fun loadScript() {
+    /**
+     * Loads a preset into what is on screen right now.
+     *
+     * When this script follows the global defaults the preset is written through to them as one
+     * atomic edit — three debounced writes could leave the surface rendering a new type size
+     * against the old margins for a frame. When it has a preset of its own, this is a session
+     * change like any other and nothing is stored.
+     */
+    fun applyPresetToSession(presetId: Long) {
+        viewModelScope.launch {
+            val preset = getPreset(presetId) ?: return@launch
+            _uiState.update {
+                it.copy(
+                    typography = preset.typography,
+                    layout = preset.layout,
+                    scroll = preset.scroll,
+                )
+            }
+            if (isFollowingGlobalDefaults) applyPreset(presetId)
+        }
+    }
+
+    /**
+     * Saves what is on screen as a new preset.
+     *
+     * Built from the live state rather than from [settingsRepository], because for a script with
+     * an assigned preset the values being looked at are deliberately not in storage —
+     * `SaveCurrentSettingsAsPreset` would quietly save the wrong thing.
+     */
+    fun saveSessionAsPreset(name: String) {
+        viewModelScope.launch { savePreset(sessionAsPreset(name)) }
+    }
+
+    /**
+     * Writes what is on screen back to the preset this script is assigned, keeping its name.
+     *
+     * Only offered for a user preset. On a built-in [SavePreset] would take a copy, and the script
+     * would end up pointing at a second "Studio" it never asked for.
+     */
+    fun saveSessionToAssignedPreset() {
+        val state = _uiState.value
+        val presetId = state.presetId ?: return
+        if (state.isPresetBuiltIn) return
+        val name = state.presetName ?: return
+        viewModelScope.launch { savePreset(sessionAsPreset(name).copy(id = presetId)) }
+    }
+
+    private fun sessionAsPreset(name: String): Preset {
+        val state = _uiState.value
+        return Preset(
+            name = name,
+            typography = state.typography,
+            layout = state.layout,
+            scroll = state.scroll,
+        )
+    }
+
+    /**
+     * Loads the script, then decides where its settings come from.
+     *
+     * These are one operation rather than two because the answer to the second depends on the
+     * first: a script with an assigned preset reads through that preset, and the global observer
+     * must never be started for it — left running, its first emission would overwrite the preset
+     * with the defaults a fraction of a second after the screen opened.
+     */
+    private fun loadScriptAndResolveSettings() {
         viewModelScope.launch {
             val script = getScript(scriptId)
             _uiState.update {
@@ -228,10 +318,34 @@ class PrompterViewModel(
                     isLoading = false,
                 )
             }
+
+            val preset = script?.presetId?.let { getPreset(it) }
+            if (preset == null) {
+                observeGlobalSettings()
+            } else {
+                seedFromPreset(preset)
+            }
         }
     }
 
-    private fun observeSettings() {
+    /**
+     * All three blocks in one update, so the surface never lays out a new type size against the
+     * old margins.
+     */
+    private fun seedFromPreset(preset: Preset) {
+        _uiState.update {
+            it.copy(
+                typography = preset.typography,
+                layout = preset.layout,
+                scroll = preset.scroll,
+                presetId = preset.id,
+                presetName = preset.name,
+                isPresetBuiltIn = preset.isBuiltIn,
+            )
+        }
+    }
+
+    private fun observeGlobalSettings() {
         viewModelScope.launch {
             combine(
                 settingsRepository.typography,
@@ -251,6 +365,7 @@ class PrompterViewModel(
         private const val FONT_STEP_SP = 2f
         private const val SETTINGS_WRITE_DEBOUNCE_MILLIS = 200L
         private const val ONE_SECOND_MILLIS = 1_000L
+        private const val PRESETS_STOP_TIMEOUT_MILLIS = 5_000L
 
         val Factory = viewModelFactory {
             initializer {
@@ -259,6 +374,10 @@ class PrompterViewModel(
                 PrompterViewModel(
                     scriptId = route.scriptId,
                     getScript = container.getScript,
+                    getPreset = container.getPreset,
+                    savePreset = container.savePreset,
+                    applyPreset = container.applyPreset,
+                    observePresets = container.observePresets,
                     settingsRepository = container.settingsRepository,
                     customFontStore = container.customFontStore,
                 )

@@ -11,6 +11,7 @@ import com.paulchibamba.teleprompter.ui.editor.EditorScreen
 import com.paulchibamba.teleprompter.ui.library.LibraryScreen
 import com.paulchibamba.teleprompter.ui.prompter.PrompterScreen
 import com.paulchibamba.teleprompter.ui.settings.KeySnifferScreen
+import com.paulchibamba.teleprompter.ui.settings.PresetsScreen
 import com.paulchibamba.teleprompter.ui.settings.RemoteMappingScreen
 import com.paulchibamba.teleprompter.ui.settings.SettingsScreen
 
@@ -58,9 +59,14 @@ fun PrompterNavHost(
         composable<Destination.Settings> {
             SettingsScreen(
                 onNavigateBack = navController::navigateUp,
+                onOpenPresets = { navController.navigate(Destination.Presets) },
                 onOpenRemoteMapping = { navController.navigate(Destination.RemoteMapping) },
                 onOpenKeySniffer = { navController.navigate(Destination.KeySniffer) },
             )
+        }
+
+        composable<Destination.Presets> {
+            PresetsScreen(onNavigateBack = navController::navigateUp)
         }
 
         composable<Destination.RemoteMapping> {

@@ -43,6 +43,7 @@ fun TypeSettingsTab(
     onCustomFontImported: (String) -> Unit,
     scroll: ScrollSettings,
     onScrollChanged: (ScrollSettings) -> Unit,
+    presetShortcuts: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var isPickingFont by remember { mutableStateOf(false) }
@@ -66,6 +67,7 @@ fun TypeSettingsTab(
         ColourSettings(typography, onTypographyChanged)
         MarkerStylePicker(typography, onTypographyChanged)
         BrightnessSlider(scroll, onScrollChanged)
+        presetShortcuts()
     }
 
     if (isPickingFont) {

@@ -49,6 +49,7 @@ fun QuickSettingsSheet(
     onSafeAreaVisibilityChanged: (Boolean) -> Unit,
     wordCount: Int,
     contentHeightPx: Float,
+    presetShortcuts: @Composable () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(QuickSettingsTab.TYPE) }
@@ -86,6 +87,7 @@ fun QuickSettingsSheet(
                         onCustomFontImported = onCustomFontImported,
                         scroll = scroll,
                         onScrollChanged = onScrollChanged,
+                        presetShortcuts = presetShortcuts,
                     )
 
                     QuickSettingsTab.LAYOUT -> LayoutSettingsTab(
