@@ -2,6 +2,7 @@ package com.paulchibamba.teleprompter.ui.editor
 
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -12,6 +13,7 @@ import com.paulchibamba.teleprompter.domain.model.ScrollSettings
 import com.paulchibamba.teleprompter.domain.scroll.WpmCalculator
 import com.paulchibamba.teleprompter.domain.text.MarkerInsertion
 import com.paulchibamba.teleprompter.domain.text.ScriptParser
+import com.paulchibamba.teleprompter.data.io.PlainTextStore
 import com.paulchibamba.teleprompter.domain.usecase.GetScript
 import com.paulchibamba.teleprompter.domain.usecase.SaveScript
 import com.paulchibamba.teleprompter.ui.navigation.Destination
@@ -41,6 +43,7 @@ class EditorViewModel(
     private val scriptId: Long,
     private val getScript: GetScript,
     private val saveScript: SaveScript,
+    private val plainTextStore: PlainTextStore,
     private val scrollSettings: Flow<ScrollSettings>,
 ) : ViewModel() {
 
@@ -66,6 +69,28 @@ class EditorViewModel(
 
     fun updateBody(body: TextFieldValue) {
         _uiState.update { it.copy(body = body) }
+    }
+
+    /**
+     * Drops an imported `.txt` into the body at the caret (docs/SPEC.md §11.1).
+     *
+     * Inserted rather than replacing what is there: the editor is often already holding work, and
+     * an import that silently overwrote a draft would be the same class of loss this whole step
+     * exists to prevent. An empty editor is the common case and inserting into it looks identical.
+     */
+    fun importIntoBody(uri: Uri) {
+        viewModelScope.launch {
+            val imported = plainTextStore.read(uri) ?: return@launch
+            val current = _uiState.value.body
+            val caret = current.selection.start.coerceIn(0, current.text.length)
+            val merged = current.text.substring(0, caret) + imported.body + current.text.substring(caret)
+            _uiState.update {
+                it.copy(
+                    body = TextFieldValue(merged, TextRange(caret + imported.body.length)),
+                    title = it.title.ifBlank { imported.suggestedTitle },
+                )
+            }
+        }
     }
 
     /** Turns the caret's line into a cue marker, leaving the caret on the same character. */
@@ -193,6 +218,7 @@ class EditorViewModel(
                     scriptId = route.scriptId,
                     getScript = container.getScript,
                     saveScript = container.saveScript,
+                    plainTextStore = container.plainTextStore,
                     scrollSettings = container.settingsRepository.scroll,
                 )
             }

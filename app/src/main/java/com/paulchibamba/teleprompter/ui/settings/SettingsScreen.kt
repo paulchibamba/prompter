@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onOpenPresets: () -> Unit,
+    onOpenBackup: () -> Unit,
     onOpenRemoteMapping: () -> Unit,
     onOpenKeySniffer: () -> Unit,
 ) {
@@ -54,6 +55,14 @@ fun SettingsScreen(
                 .padding(contentPadding)
                 .verticalScroll(rememberScrollState()),
         ) {
+            // First, and worded as a question about safety rather than a feature name: it is the
+            // only entry here whose absence loses work.
+            SettingsEntry(
+                title = "Backup",
+                subtitle = "Keep your scripts safe from a reinstall, and get them back.",
+                onClick = onOpenBackup,
+            )
+            HorizontalDivider()
             SettingsEntry(
                 title = "Presets",
                 subtitle = "Save, rename and apply named settings.",

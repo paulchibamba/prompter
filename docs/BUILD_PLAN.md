@@ -69,6 +69,26 @@ the app becomes useful.
 
 **Milestone:** with the phone in the rig, margins match the glass and mirrored text reads correctly.
 
+## Data safety — brought forward
+
+| # | Step | Delivers |
+|---|---|---|
+| 24 | Backup, export & import | Automatic snapshots to a folder the user picks, surviving uninstall; full JSON backup and restore; `.txt` export and import with charset detection |
+
+Moved here from Phase F. A script must survive a mistake — a dropped phone, a reinstall, a wrong tap, a
+developer running the wrong Gradle task. Nothing else in this plan protects one, and the OS deliberately
+will not: `allowBackup="false"` is requirement P1, so there is no Android backup and no `adb backup`
+either. Until this step lands, every script in the app exists in exactly one place and an uninstall is
+unrecoverable.
+
+**Scope note.** The automatic half is what makes this "never by accident" rather than "never if you
+remembered". Snapshots are written to a folder chosen once through the Storage Access Framework, which
+needs **no permission** and lives outside the app sandbox. One limitation is inherent and must be stated
+in the UI: a reinstall loses the persisted folder grant along with everything else, so the files survive
+but the user has to point the app back at them once. Restoring is then two taps.
+
+**Milestone:** uninstall the app with scripts in it, reinstall, and get them all back.
+
 ## Phase E — The remote
 
 | # | Step | Delivers |
@@ -89,7 +109,8 @@ mappings at once.
 | # | Step | Delivers |
 |---|---|---|
 | 23 | Markers & progress scrubber | Jump to next/previous section, seekable progress bar with marker ticks |
-| 24 | Import / export | SAF import with charset detection, `.txt` export, full JSON backup and restore |
 | 25 | Resume, accessibility & performance | Resume position, TalkBack pass, sustained 60fps on a 10,000-word script, v1.0.0 release |
+
+Step 24 was **brought forward** out of this phase — see "Data safety", above.
 
 **Milestone:** the full acceptance checklist in [`docs/SPEC.md`](SPEC.md) §16.

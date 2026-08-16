@@ -29,6 +29,10 @@ sealed interface Destination {
     @Serializable
     data object Presets : Destination
 
+    /** Choosing where snapshots go, and getting scripts back after a reinstall. */
+    @Serializable
+    data object Backup : Destination
+
     /** Binding remote buttons to actions. */
     @Serializable
     data object RemoteMapping : Destination

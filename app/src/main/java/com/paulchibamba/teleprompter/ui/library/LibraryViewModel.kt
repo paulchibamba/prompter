@@ -1,5 +1,6 @@
 package com.paulchibamba.teleprompter.ui.library
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
@@ -7,7 +8,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.paulchibamba.teleprompter.domain.model.Preset
 import com.paulchibamba.teleprompter.domain.model.Script
 import com.paulchibamba.teleprompter.domain.model.ScrollSettings
+import com.paulchibamba.teleprompter.data.io.PlainTextStore
 import com.paulchibamba.teleprompter.domain.scroll.WpmCalculator
+import com.paulchibamba.teleprompter.domain.text.ScriptParser
 import com.paulchibamba.teleprompter.domain.usecase.DeleteScript
 import com.paulchibamba.teleprompter.domain.usecase.DuplicateScript
 import com.paulchibamba.teleprompter.domain.usecase.GetScript
@@ -47,6 +50,7 @@ class LibraryViewModel(
     private val restoreScript: RestoreScript,
     private val duplicateScript: DuplicateScript,
     private val reorderScripts: ReorderScripts,
+    private val plainTextStore: PlainTextStore,
     observePresets: ObservePresets,
     scrollSettings: Flow<ScrollSettings>,
 ) : ViewModel() {
@@ -131,6 +135,33 @@ class LibraryViewModel(
         undoableDeletion = null
     }
 
+    /**
+     * Reads a `.txt` into a new script (docs/SPEC.md §11.1).
+     *
+     * The file name becomes the title, which is almost always what the writer called it. A file
+     * that cannot be read is dropped rather than becoming an empty script — an empty row appearing
+     * in the library reads as the import having worked.
+     */
+    fun importScript(uri: Uri) {
+        viewModelScope.launch {
+            val imported = plainTextStore.read(uri) ?: return@launch
+            saveScript(
+                Script(
+                    title = imported.suggestedTitle,
+                    body = imported.body,
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = System.currentTimeMillis(),
+                    wordCount = ScriptParser.wordCount(imported.body),
+                ),
+            )
+        }
+    }
+
+    /** Writes a script's body out as plain text, newlines and all (§11.2). */
+    fun exportScript(id: Long, uri: Uri) = withScript(id) { script ->
+        plainTextStore.write(uri, script.body)
+    }
+
     /** [idsInOrder] is the list exactly as it now reads on screen, after the drag settled. */
     fun reorderScripts(idsInOrder: List<Long>) {
         viewModelScope.launch { reorderScripts.invoke(idsInOrder) }
@@ -199,6 +230,7 @@ class LibraryViewModel(
                     restoreScript = container.restoreScript,
                     duplicateScript = container.duplicateScript,
                     reorderScripts = container.reorderScripts,
+                    plainTextStore = container.plainTextStore,
                     observePresets = container.observePresets,
                     scrollSettings = container.settingsRepository.scroll,
                 )

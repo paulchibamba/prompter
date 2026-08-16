@@ -36,6 +36,10 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 - [x] **Step 18** — Presets management
 - [x] **Step 19** — Prompter gestures ← *layout for the glass is complete*
 
+## Data safety — brought forward
+
+- [ ] **Step 24** — Backup, export & import ← *next*
+
 ## Phase E — The remote
 
 - [ ] **Step 20** — Key sniffer (diagnostic)
@@ -45,7 +49,6 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 ## Phase F — Polish
 
 - [ ] **Step 23** — Markers navigation & progress scrubber
-- [ ] **Step 24** — Import / export
 - [ ] **Step 25** — Resume, accessibility & performance
 
 ---

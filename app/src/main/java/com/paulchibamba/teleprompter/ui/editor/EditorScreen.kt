@@ -1,5 +1,7 @@
 package com.paulchibamba.teleprompter.ui.editor
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,6 +68,10 @@ fun EditorScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
+    val importIntoEditor = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(viewModel::importIntoBody) }
+
     SaveWhenScreenStops(viewModel)
 
     EditorScaffold(
@@ -75,6 +81,7 @@ fun EditorScreen(
         onTitleChanged = viewModel::updateTitle,
         onBodyChanged = viewModel::updateBody,
         onInsertMarker = viewModel::insertMarker,
+        onImport = { importIntoEditor.launch(arrayOf("text/*", "application/octet-stream")) },
         onNavigateBack = {
             viewModel.saveNow()
             onNavigateBack()
@@ -103,6 +110,7 @@ private fun EditorScaffold(
     onTitleChanged: (String) -> Unit,
     onBodyChanged: (TextFieldValue) -> Unit,
     onInsertMarker: () -> Unit,
+    onImport: () -> Unit,
     onNavigateBack: () -> Unit,
     onPreview: () -> Unit,
     onSave: () -> Unit,
@@ -119,6 +127,7 @@ private fun EditorScaffold(
             EditorBottomBar(
                 summary = uiState.summary,
                 onInsertMarker = onInsertMarker,
+                onImport = onImport,
                 onPreview = onPreview,
                 canPreview = uiState.body.text.isNotBlank(),
             )
@@ -219,6 +228,7 @@ private fun BodyField(
 private fun EditorBottomBar(
     summary: String,
     onInsertMarker: () -> Unit,
+    onImport: () -> Unit,
     onPreview: () -> Unit,
     canPreview: Boolean,
 ) {
@@ -239,8 +249,7 @@ private fun EditorBottomBar(
                 modifier = Modifier.weight(1f),
             )
             TextButton(onClick = onInsertMarker) { Text("Marker") }
-            // Import lands with the import/export step; shown disabled so the bar keeps its shape.
-            TextButton(onClick = {}, enabled = false) { Text("Import") }
+            TextButton(onClick = onImport) { Text("Import") }
             IconButton(
                 onClick = {
                     keyboardController?.hide()

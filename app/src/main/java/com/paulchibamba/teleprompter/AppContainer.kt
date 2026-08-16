@@ -2,15 +2,20 @@ package com.paulchibamba.teleprompter
 
 import android.content.Context
 import com.paulchibamba.teleprompter.data.db.PrompterDatabase
+import com.paulchibamba.teleprompter.data.io.AutomaticBackup
+import com.paulchibamba.teleprompter.data.io.BackupStore
 import com.paulchibamba.teleprompter.data.io.CustomFontStore
+import com.paulchibamba.teleprompter.data.io.PlainTextStore
 import com.paulchibamba.teleprompter.data.db.RoomPresetRepository
 import com.paulchibamba.teleprompter.data.db.RoomScriptRepository
+import com.paulchibamba.teleprompter.data.prefs.BackupPreferences
 import com.paulchibamba.teleprompter.data.prefs.DataStoreSettingsRepository
 import com.paulchibamba.teleprompter.data.prefs.settingsDataStore
 import com.paulchibamba.teleprompter.domain.repository.PresetRepository
 import com.paulchibamba.teleprompter.domain.repository.ScriptRepository
 import com.paulchibamba.teleprompter.domain.repository.SettingsRepository
 import com.paulchibamba.teleprompter.domain.usecase.ApplyPreset
+import com.paulchibamba.teleprompter.domain.usecase.CreateBackupSnapshot
 import com.paulchibamba.teleprompter.domain.usecase.DeletePreset
 import com.paulchibamba.teleprompter.domain.usecase.DeleteScript
 import com.paulchibamba.teleprompter.domain.usecase.DuplicatePreset
@@ -20,6 +25,7 @@ import com.paulchibamba.teleprompter.domain.usecase.GetScript
 import com.paulchibamba.teleprompter.domain.usecase.ObservePresets
 import com.paulchibamba.teleprompter.domain.usecase.ObserveScripts
 import com.paulchibamba.teleprompter.domain.usecase.ReorderScripts
+import com.paulchibamba.teleprompter.domain.usecase.RestoreBackupSnapshot
 import com.paulchibamba.teleprompter.domain.usecase.RestoreScript
 import com.paulchibamba.teleprompter.domain.usecase.SaveCurrentSettingsAsPreset
 import com.paulchibamba.teleprompter.domain.usecase.SavePreset
@@ -45,6 +51,12 @@ class AppContainer(context: Context) {
     val presetRepository: PresetRepository by lazy { RoomPresetRepository(database.presetDao()) }
 
     val customFontStore: CustomFontStore by lazy { CustomFontStore(applicationContext) }
+    val backupStore: BackupStore by lazy { BackupStore(applicationContext) }
+    val plainTextStore: PlainTextStore by lazy { PlainTextStore(applicationContext) }
+
+    val backupPreferences: BackupPreferences by lazy {
+        BackupPreferences(applicationContext.settingsDataStore)
+    }
 
     val settingsRepository: SettingsRepository by lazy {
         DataStoreSettingsRepository(applicationContext.settingsDataStore)
@@ -70,5 +82,15 @@ class AppContainer(context: Context) {
     }
     val updatePresetFromCurrentSettings: UpdatePresetFromCurrentSettings by lazy {
         UpdatePresetFromCurrentSettings(presetRepository, settingsRepository)
+    }
+
+    val createBackupSnapshot: CreateBackupSnapshot by lazy {
+        CreateBackupSnapshot(scriptRepository, presetRepository, settingsRepository)
+    }
+    val restoreBackupSnapshot: RestoreBackupSnapshot by lazy {
+        RestoreBackupSnapshot(scriptRepository, presetRepository, settingsRepository)
+    }
+    val automaticBackup: AutomaticBackup by lazy {
+        AutomaticBackup(scriptRepository, createBackupSnapshot, backupStore, backupPreferences)
     }
 }
