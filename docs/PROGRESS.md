@@ -34,7 +34,7 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 - [x] **Step 16** — Mirroring & orientation
 - [x] **Step 17** — Scroll settings
 - [x] **Step 18** — Presets management
-- [ ] **Step 19** — Prompter gestures
+- [x] **Step 19** — Prompter gestures ← *layout for the glass is complete*
 
 ## Phase E — The remote
 
@@ -99,6 +99,30 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) was **not applied** by the prompter, which read
   the global settings regardless. Closed in Step 18: the prompter now seeds from the assigned preset and
   does not start the global settings observer at all for such a script.
+- **Step 19** — the one-finger drag is **not** intercepted. `PauseOnManualScrub` listens to the list's own
+  `interactionSource` for a `DragInteraction.Start` instead. Taking the drag over would mean re-implementing
+  fling and over-scroll to get back what `LazyColumn` already does, and — the reason that matters — watching
+  the scroll *position* cannot tell a reader's drag from the scroll engine's own `scrollBy`, so it would
+  fire on every frame of ordinary playback.
+- **Step 19** — tap, double-tap and press-and-hold are hand-rolled in `detectTapsAndHold` rather than using
+  Compose's `detectTapGestures`. §10 makes blackout a *hold* — dark while the finger is down, restored when
+  it lifts — and `detectTapGestures` reports a long press but never its release. The blackout button from
+  Step 17 stays a toggle; the two coexist deliberately, matching §8.4 (tap to restore) and §10 (release
+  restores).
+- **Step 19** — pinch and two-finger drag are **locked apart**: whichever passes the touch slop first owns
+  the rest of the gesture. Both ride the same two fingers, and running them together turns a small
+  imprecision in one into an unwanted change in the other — reaching to slow the scroll and taking the type
+  size with it.
+- **Step 19** — the two-finger speed drag moves in whole steps (one per 48dp) rather than continuously, so
+  it does the same thing the − and + buttons do and stays in whichever unit the reader is working in.
+- **Step 19** — **the gesture tests are instrumented**, in `app/src/androidTest`. `adb shell input` has no
+  multi-touch, so pinch and two-finger drag cannot be driven from a script the way the other four gestures
+  were; Compose's `performTouchInput` multi-pointer API can. CI has no emulator, so `connectedDebugAndroidTest`
+  is a local step — run it against a device when touching `PrompterGestures.kt`.
+- **Step 19** — verified on device by scripted input: single tap toggles the bar, double tap plays and
+  pauses, press-and-hold blacks the screen out and releasing restores it, and a drag mid-playback raises the
+  Paused chip, does not resume on its own after four seconds, and resumes on the button. Pinch and
+  two-finger speed were verified by the instrumented tests, not by hand in the prompter itself.
 - **Step 18** — **a mid-take adjustment on a script with an assigned preset is session-only.** One rule
   governs the prompter: it writes to the global defaults if and only if the script has no assigned preset.
   The alternatives were all worse. Writing back to the preset moves every other script assigned to it — and
@@ -234,8 +258,8 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
   30.5s at 120sp as at 72sp.
 - **Step 10** — end behaviour (HOLD / LOOP / EXIT) is implemented in full, ahead of the scroll settings step
   which was only meant to expose the controls for it.
-- **Step 10** — a single tap toggles the control bar. The rest of the gesture set arrives with the gestures
-  step; this much is needed now or the bar cannot be recovered once it hides.
+- **Step 10** — a single tap toggles the control bar. This much was needed then or the bar could not be
+  recovered once it hid; the rest of the gesture set landed in Step 19, which took the tap over too.
 - **Step 10** — the quick-settings button in the control bar is disabled until the sheet exists.
 - **Step 9** — the first and last lines settle about 4.5% of screen height *below* the nominal reading-line
   percentage, because `Trim.None` keeps half-leading above the first line of each text block. The offset is

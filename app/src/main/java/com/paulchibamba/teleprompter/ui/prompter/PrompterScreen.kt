@@ -1,7 +1,6 @@
 package com.paulchibamba.teleprompter.ui.prompter
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +19,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -109,14 +107,21 @@ fun PrompterScreen(
         },
     )
 
+    PauseOnManualScrub(listState = listState, onScrubbed = viewModel::pauseForScrub)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             // On the parent, so the list below still receives drags for manual scrubbing while
-            // taps that nothing else claimed reach us.
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { areControlsVisible = !areControlsVisible })
-            },
+            // gestures that nothing else claimed reach us.
+            .prompterGestures(
+                onTap = { areControlsVisible = !areControlsVisible },
+                onDoubleTap = viewModel::togglePlayPause,
+                onBlackoutStart = viewModel::startBlackout,
+                onBlackoutEnd = viewModel::endBlackout,
+                onPinch = viewModel::scaleFontSize,
+                onSpeedStep = viewModel::stepSpeed,
+            ),
     ) {
         PrompterSurface(
             paragraphs = uiState.paragraphs,
@@ -136,6 +141,14 @@ fun PrompterScreen(
             textColor = Color(uiState.typography.textColor),
             mirrorHorizontal = uiState.layout.mirrorHorizontal,
             mirrorVertical = uiState.layout.mirrorVertical,
+        )
+
+        // Above the control bar, so it is still readable when the bar is showing and still there
+        // when it has hidden itself.
+        ScrubPauseChip(
+            isVisible = uiState.isPausedByScrub,
+            onResume = viewModel::resumeFromScrub,
+            modifier = Modifier.align(Alignment.TopCenter),
         )
 
         ControlBar(

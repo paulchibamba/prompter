@@ -18,6 +18,11 @@ data class PrompterUiState(
     /** Seconds still to show in the pre-roll; 0 when no countdown is running (docs/SPEC.md §8.4). */
     val countdownRemaining: Int = 0,
     val isBlackedOut: Boolean = false,
+    /**
+     * Playback stopped because the reader dragged the text, not because they pressed pause. It is
+     * tracked separately so the prompter can say why it stopped and offer a way back (§8.4).
+     */
+    val isPausedByScrub: Boolean = false,
     val typography: TypographySettings = TypographySettings(),
     val layout: LayoutSettings = LayoutSettings(),
     val scroll: ScrollSettings = ScrollSettings(),
