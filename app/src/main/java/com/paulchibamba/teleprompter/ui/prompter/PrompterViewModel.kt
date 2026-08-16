@@ -160,12 +160,31 @@ class PrompterViewModel(
     /** Stops the text, and abandons a countdown that has not finished. */
     fun pause() {
         countdownJob?.cancel()
-        _uiState.update { it.copy(isPlaying = false, countdownRemaining = 0) }
+        _uiState.update { it.copy(isPlaying = false, countdownRemaining = 0, isPausedByScrub = false) }
+    }
+
+    /**
+     * The reader took hold of the text mid-read (docs/SPEC.md §8.4).
+     *
+     * Only meaningful while something is actually moving — dragging an already-stopped script is
+     * just reading ahead, and does not deserve a chip saying it was paused.
+     */
+    fun pauseForScrub() {
+        val state = _uiState.value
+        if (!state.isPlaying && !state.isCountingDown) return
+        countdownJob?.cancel()
+        _uiState.update { it.copy(isPlaying = false, countdownRemaining = 0, isPausedByScrub = true) }
+    }
+
+    /** Picks up from wherever the scrub left off, without a fresh countdown. */
+    fun resumeFromScrub() {
+        _uiState.update { it.copy(isPlaying = true, isPausedByScrub = false) }
     }
 
     /** Starts the text, after the countdown if one is configured (docs/SPEC.md §8.4). */
     fun play() {
         countdownJob?.cancel()
+        _uiState.update { it.copy(isPausedByScrub = false) }
         val countdownSeconds = _uiState.value.scroll.countdownSeconds
         if (countdownSeconds <= 0) {
             _uiState.update { it.copy(isPlaying = true) }
@@ -190,12 +209,26 @@ class PrompterViewModel(
      * glass lights up is worse than one extra press.
      */
     fun toggleBlackout() {
-        if (_uiState.value.isBlackedOut) {
-            _uiState.update { it.copy(isBlackedOut = false) }
-            return
-        }
+        if (_uiState.value.isBlackedOut) endBlackout() else startBlackout()
+    }
+
+    fun startBlackout() {
+        if (_uiState.value.isBlackedOut) return
         pause()
         _uiState.update { it.copy(isBlackedOut = true) }
+    }
+
+    fun endBlackout() {
+        _uiState.update { it.copy(isBlackedOut = false) }
+    }
+
+    /**
+     * Pinch to size (§10). The ratio is applied to the size already showing rather than to a size
+     * captured when the gesture began, so it compounds frame by frame and tracks the fingers.
+     */
+    fun scaleFontSize(zoomRatio: Float) {
+        val current = _uiState.value.typography
+        updateTypography(current.copy(sizeSp = current.sizeSp * zoomRatio))
     }
 
     fun increaseSpeed() = stepSpeed(steps = 1)
@@ -226,7 +259,7 @@ class PrompterViewModel(
     }
 
     /** Moves whichever unit the reader is working in — words per minute, or pixels per second. */
-    private fun stepSpeed(steps: Int) {
+    fun stepSpeed(steps: Int) {
         updateScrollSettings(_uiState.value.scroll.steppedSpeed(steps))
     }
 
