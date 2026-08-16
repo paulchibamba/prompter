@@ -102,6 +102,41 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) was **not applied** by the prompter, which read
   the global settings regardless. Closed in Step 18: the prompter now seeds from the assigned preset and
   does not start the global settings observer at all for such a script.
+- **Step 24** — **brought forward out of Phase F**, after `:app:connectedDebugAndroidTest` uninstalled the
+  app during Step 19 and destroyed every script on the device, including real work. Nothing in the app or
+  the OS kept a copy: `allowBackup="false"` is requirement P1 and means there is no Android backup and no
+  `adb backup` either. Backup stopped being polish the moment it was the only thing that could have helped.
+- **Step 24** — backups go to a folder chosen through **SAF**, not to Android's own backup service.
+  Re-enabling `allowBackup` would hand the data to Google's cloud backup, contradicting P1 and the About
+  screen's claim that the app makes no network connections. `ACTION_OPEN_DOCUMENT_TREE` needs no permission,
+  so the no-permissions guarantee survives intact.
+- **Step 24** — **the one limitation, stated in the UI:** a reinstall loses the persisted folder grant along
+  with everything else, so restoring is not automatic. The files are untouched; the user picks the same
+  folder again and taps restore. There is no way around this without a permission — reading files another
+  install created needs broad storage access.
+- **Step 24** — a snapshot is written on **script changes only**, debounced 5s. Settings and presets ride
+  along in whatever snapshot the next script edit triggers; a slider drag should not write a file, and the
+  editor autosaves every 500ms so a shorter debounce would fill the folder with near-identical copies.
+- **Step 24** — **ten snapshots are kept, not one.** A single rotating file means a backup taken just after
+  an accidental delete overwrites the copy that still had the script — the exact failure this step exists to
+  prevent, arriving through the feature meant to prevent it.
+- **Step 24** — restore **merges** by default. Someone restoring has usually just lost something, and the
+  destructive reading of the word would let a stale backup delete the work that survived. `REPLACE` exists
+  and is tested, but nothing in the UI reaches it yet.
+- **Step 24** — `BackupSnapshot.version` is `@Required`. Every other field has a default, so without it any
+  JSON object decodes into an empty snapshot: picking the wrong file would report a successful restore of
+  nothing. Caught by a test that asserted `{"unrelated":"object"}` is refused, which it was not.
+- **Step 24** — word counts are **recomputed** on restore rather than read from the file. The stored count is
+  derived data, and one written by a build whose counting rules differed would put every duration estimate
+  quietly out.
+- **Step 24** — backup settings live in their own DataStore keys, deliberately **outside** the three settings
+  blocks. Those blocks travel inside a snapshot, so keeping the folder among them would mean restoring a
+  backup redirects where future backups go — most likely at a folder from another phone this install has no
+  grant on, silently stopping automatic backup right after the user proved they needed it.
+- **Step 24** — **not yet verified on device.** The phone dropped its wireless-debug connection before the
+  test that actually matters could be run: put scripts in, uninstall, reinstall, re-pick the folder, restore,
+  and check every script comes back byte for byte. Nine unit tests cover the round trip, the merge rules and
+  the refusals, but they do not exercise SAF. Until that run happens this step is not done.
 - **Step 19** — the one-finger drag is **not** intercepted. `PauseOnManualScrub` listens to the list's own
   `interactionSource` for a `DragInteraction.Start` instead. Taking the drag over would mean re-implementing
   fling and over-scroll to get back what `LazyColumn` already does, and — the reason that matters — watching
