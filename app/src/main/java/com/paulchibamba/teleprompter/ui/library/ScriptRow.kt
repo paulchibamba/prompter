@@ -46,6 +46,7 @@ fun ScriptRow(
     onRename: () -> Unit,
     onDuplicate: () -> Unit,
     onAssignPreset: () -> Unit,
+    onExport: () -> Unit,
     onDelete: () -> Unit,
     onDragStarted: () -> Unit,
     onDragged: (Float) -> Unit,
@@ -77,6 +78,7 @@ fun ScriptRow(
                     onRename = onRename,
                     onDuplicate = onDuplicate,
                     onAssignPreset = onAssignPreset,
+                    onExport = onExport,
                     onDelete = onDelete,
                 )
             }
@@ -154,6 +156,7 @@ private fun ScriptRowMenuButton(
     onRename: () -> Unit,
     onDuplicate: () -> Unit,
     onAssignPreset: () -> Unit,
+    onExport: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var isMenuOpen by remember { mutableStateOf(false) }
@@ -166,10 +169,8 @@ private fun ScriptRowMenuButton(
         ScriptRowMenuItem("Rename") { isMenuOpen = false; onRename() }
         ScriptRowMenuItem("Duplicate") { isMenuOpen = false; onDuplicate() }
         ScriptRowMenuItem("Assign preset") { isMenuOpen = false; onAssignPreset() }
+        ScriptRowMenuItem("Export .txt") { isMenuOpen = false; onExport() }
         ScriptRowMenuItem("Delete") { isMenuOpen = false; onDelete() }
-        // Export arrives with import/export in a later step; shown disabled so the menu's final
-        // shape is visible rather than shifting under the user once it is wired up.
-        ScriptRowMenuItem("Export .txt", enabled = false) {}
     }
 }
 

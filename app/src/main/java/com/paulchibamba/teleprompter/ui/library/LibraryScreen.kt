@@ -1,5 +1,7 @@
 package com.paulchibamba.teleprompter.ui.library
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -65,6 +67,20 @@ fun LibraryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    // Which script the user chose to export, held only until the system picker comes back with
+    // somewhere to write it.
+    var scriptBeingExported by remember { mutableStateOf<Long?>(null) }
+
+    val importScript = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(viewModel::importScript)
+    }
+    val chooseExportTarget = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(PLAIN_TEXT_MIME_TYPE),
+    ) { uri ->
+        val scriptId = scriptBeingExported
+        scriptBeingExported = null
+        if (uri != null && scriptId != null) viewModel.exportScript(scriptId, uri)
+    }
 
     ObserveDeletionEvents(
         viewModel = viewModel,
@@ -83,10 +99,18 @@ fun LibraryScreen(
         onRename = viewModel::renameScript,
         onDuplicate = viewModel::duplicateScript,
         onAssignPreset = viewModel::assignPreset,
+        onExport = { scriptId, title ->
+            scriptBeingExported = scriptId
+            chooseExportTarget.launch("$title.txt")
+        },
+        onImport = { importScript.launch(arrayOf("text/*", "application/octet-stream")) },
         onDelete = viewModel::deleteScript,
         onReorder = viewModel::reorderScripts,
     )
 }
+
+/** Providers routinely report a .txt as an octet stream, so the picker cannot filter on this alone. */
+private const val PLAIN_TEXT_MIME_TYPE = "text/plain"
 
 /**
  * Shows the undo snackbar for exactly five seconds (§5.1). Material's own Short duration is four
@@ -135,6 +159,8 @@ private fun LibraryScaffold(
     onRename: (Long, String) -> Unit,
     onDuplicate: (Long) -> Unit,
     onAssignPreset: (Long, Long?) -> Unit,
+    onExport: (Long, String) -> Unit,
+    onImport: () -> Unit,
     onDelete: (Long) -> Unit,
     onReorder: (List<Long>) -> Unit,
 ) {
@@ -142,6 +168,7 @@ private fun LibraryScaffold(
         topBar = {
             LibraryTopBar(
                 uiState = uiState,
+                onImport = onImport,
                 onOpenSearch = onOpenSearch,
                 onCloseSearch = onCloseSearch,
                 onSearchQueryChanged = onSearchQueryChanged,
@@ -159,6 +186,8 @@ private fun LibraryScaffold(
             onRename = onRename,
             onDuplicate = onDuplicate,
             onAssignPreset = onAssignPreset,
+            onExport = onExport,
+            onImport = onImport,
             onDelete = onDelete,
             onReorder = onReorder,
         )
@@ -174,6 +203,8 @@ private fun LibraryContent(
     onRename: (Long, String) -> Unit,
     onDuplicate: (Long) -> Unit,
     onAssignPreset: (Long, Long?) -> Unit,
+    onExport: (Long, String) -> Unit,
+    onImport: () -> Unit,
     onDelete: (Long) -> Unit,
     onReorder: (List<Long>) -> Unit,
 ) {
@@ -181,6 +212,7 @@ private fun LibraryContent(
         uiState.hasNoScripts -> EmptyLibraryMessage(
             modifier = modifier,
             onCreateScript = { onOpenEditor(NEW_SCRIPT) },
+            onImport = onImport,
         )
 
         uiState.hasNoSearchResults -> NoSearchResultsMessage(uiState.searchQuery, modifier)
@@ -193,6 +225,8 @@ private fun LibraryContent(
             onRename = onRename,
             onDuplicate = onDuplicate,
             onAssignPreset = onAssignPreset,
+            onExport = onExport,
+            onImport = onImport,
             onDelete = onDelete,
             onReorder = onReorder,
         )
@@ -208,6 +242,8 @@ private fun ScriptList(
     onRename: (Long, String) -> Unit,
     onDuplicate: (Long) -> Unit,
     onAssignPreset: (Long, Long?) -> Unit,
+    onExport: (Long, String) -> Unit,
+    onImport: () -> Unit,
     onDelete: (Long) -> Unit,
     onReorder: (List<Long>) -> Unit,
 ) {
@@ -231,6 +267,7 @@ private fun ScriptList(
                 onRename = { rowBeingRenamed = row },
                 onDuplicate = { onDuplicate(row.id) },
                 onAssignPreset = { rowChoosingPreset = row },
+                onExport = { onExport(row.id, row.title) },
                 onDelete = { onDelete(row.id) },
                 onDragStarted = { reorderState.onDragStarted(row.id) },
                 onDragged = reorderState::onDragged,
@@ -275,6 +312,7 @@ private fun Modifier.draggedRowModifier(reorderState: ReorderState<ScriptRowUi>,
 @Composable
 private fun LibraryTopBar(
     uiState: LibraryUiState,
+    onImport: () -> Unit,
     onOpenSearch: () -> Unit,
     onCloseSearch: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
@@ -297,7 +335,7 @@ private fun LibraryTopBar(
                 IconButton(onClick = onOpenSearch) {
                     Icon(Icons.Filled.Search, contentDescription = "Search scripts")
                 }
-                LibraryOverflowMenu(onOpenSettings = onOpenSettings)
+                LibraryOverflowMenu(onOpenSettings = onOpenSettings, onImport = onImport)
             }
         },
     )
@@ -324,7 +362,7 @@ private fun SearchField(query: String, onQueryChanged: (String) -> Unit) {
 }
 
 @Composable
-private fun LibraryOverflowMenu(onOpenSettings: () -> Unit) {
+private fun LibraryOverflowMenu(onOpenSettings: () -> Unit, onImport: () -> Unit) {
     var isMenuOpen by remember { mutableStateOf(false) }
 
     IconButton(onClick = { isMenuOpen = true }) {
@@ -336,9 +374,10 @@ private fun LibraryOverflowMenu(onOpenSettings: () -> Unit) {
             text = { Text("Settings") },
             onClick = { isMenuOpen = false; onOpenSettings() },
         )
-        // Import arrives with the import/export step; shown disabled so the menu's final shape is
-        // visible rather than shifting under the user once it is wired up.
-        DropdownMenuItem(text = { Text("Import .txt") }, enabled = false, onClick = {})
+        DropdownMenuItem(
+            text = { Text("Import .txt") },
+            onClick = { isMenuOpen = false; onImport() },
+        )
     }
 }
 
@@ -352,7 +391,11 @@ private fun NewScriptButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun EmptyLibraryMessage(modifier: Modifier, onCreateScript: () -> Unit) {
+private fun EmptyLibraryMessage(
+    modifier: Modifier,
+    onCreateScript: () -> Unit,
+    onImport: () -> Unit,
+) {
     CentredMessage(modifier) {
         Text(
             text = "No scripts yet",
@@ -365,7 +408,7 @@ private fun EmptyLibraryMessage(modifier: Modifier, onCreateScript: () -> Unit) 
             textAlign = TextAlign.Center,
         )
         OutlinedButton(onClick = onCreateScript) { Text("New script") }
-        OutlinedButton(onClick = {}, enabled = false) { Text("Import .txt") }
+        OutlinedButton(onClick = onImport) { Text("Import .txt") }
     }
 }
 

@@ -10,6 +10,7 @@ import androidx.navigation.toRoute
 import com.paulchibamba.teleprompter.ui.editor.EditorScreen
 import com.paulchibamba.teleprompter.ui.library.LibraryScreen
 import com.paulchibamba.teleprompter.ui.prompter.PrompterScreen
+import com.paulchibamba.teleprompter.ui.settings.BackupScreen
 import com.paulchibamba.teleprompter.ui.settings.KeySnifferScreen
 import com.paulchibamba.teleprompter.ui.settings.PresetsScreen
 import com.paulchibamba.teleprompter.ui.settings.RemoteMappingScreen
@@ -60,9 +61,14 @@ fun PrompterNavHost(
             SettingsScreen(
                 onNavigateBack = navController::navigateUp,
                 onOpenPresets = { navController.navigate(Destination.Presets) },
+                onOpenBackup = { navController.navigate(Destination.Backup) },
                 onOpenRemoteMapping = { navController.navigate(Destination.RemoteMapping) },
                 onOpenKeySniffer = { navController.navigate(Destination.KeySniffer) },
             )
+        }
+
+        composable<Destination.Backup> {
+            BackupScreen(onNavigateBack = navController::navigateUp)
         }
 
         composable<Destination.Presets> {

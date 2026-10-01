@@ -36,16 +36,19 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 - [x] **Step 18** — Presets management
 - [x] **Step 19** — Prompter gestures ← *layout for the glass is complete*
 
+## Data safety — brought forward
+
+- [x] **Step 24** — Backup, export & import
+
 ## Phase E — The remote
 
-- [ ] **Step 20** — Key sniffer (diagnostic)
+- [ ] **Step 20** — Key sniffer (diagnostic) ← *next*
 - [ ] **Step 21** — Remote routing, defaults & persistence
 - [ ] **Step 22** — Learn-button flow & per-device profiles
 
 ## Phase F — Polish
 
 - [ ] **Step 23** — Markers navigation & progress scrubber
-- [ ] **Step 24** — Import / export
 - [ ] **Step 25** — Resume, accessibility & performance
 
 ---
@@ -99,6 +102,63 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
 - **Step 9** — a script's assigned preset (`Script.presetId`) was **not applied** by the prompter, which read
   the global settings regardless. Closed in Step 18: the prompter now seeds from the assigned preset and
   does not start the global settings observer at all for such a script.
+- **Step 24** — **brought forward out of Phase F**, after `:app:connectedDebugAndroidTest` uninstalled the
+  app during Step 19 and destroyed every script on the device, including real work. Nothing in the app or
+  the OS kept a copy: `allowBackup="false"` is requirement P1 and means there is no Android backup and no
+  `adb backup` either. Backup stopped being polish the moment it was the only thing that could have helped.
+- **Step 24** — backups go to a folder chosen through **SAF**, not to Android's own backup service.
+  Re-enabling `allowBackup` would hand the data to Google's cloud backup, contradicting P1 and the About
+  screen's claim that the app makes no network connections. `ACTION_OPEN_DOCUMENT_TREE` needs no permission,
+  so the no-permissions guarantee survives intact.
+- **Step 24** — **the one limitation, stated in the UI:** a reinstall loses the persisted folder grant along
+  with everything else, so restoring is not automatic. The files are untouched; the user picks the same
+  folder again and taps restore. There is no way around this without a permission — reading files another
+  install created needs broad storage access.
+- **Step 24** — a snapshot is written on **script changes only**, debounced 5s. Settings and presets ride
+  along in whatever snapshot the next script edit triggers; a slider drag should not write a file, and the
+  editor autosaves every 500ms so a shorter debounce would fill the folder with near-identical copies.
+- **Step 24** — **ten snapshots are kept, not one.** A single rotating file means a backup taken just after
+  an accidental delete overwrites the copy that still had the script — the exact failure this step exists to
+  prevent, arriving through the feature meant to prevent it.
+- **Step 24** — restore **merges** by default. Someone restoring has usually just lost something, and the
+  destructive reading of the word would let a stale backup delete the work that survived. `REPLACE` exists
+  and is tested, but nothing in the UI reaches it yet.
+- **Step 24** — `BackupSnapshot.version` is `@Required`. Every other field has a default, so without it any
+  JSON object decodes into an empty snapshot: picking the wrong file would report a successful restore of
+  nothing. Caught by a test that asserted `{"unrelated":"object"}` is refused, which it was not.
+- **Step 24** — word counts are **recomputed** on restore rather than read from the file. The stored count is
+  derived data, and one written by a build whose counting rules differed would put every duration estimate
+  quietly out.
+- **Step 24** — backup settings live in their own DataStore keys, deliberately **outside** the three settings
+  blocks. Those blocks travel inside a snapshot, so keeping the folder among them would mean restoring a
+  backup redirects where future backups go — most likely at a folder from another phone this install has no
+  grant on, silently stopping automatic backup right after the user proved they needed it.
+- **Step 24** — **verified on device**, and the run found a defect that unit tests could not have: the
+  milestone failed. Choosing the folder wrote a snapshot immediately, so doing it on a fresh install — the
+  reinstall case, library empty — wrote an *empty* snapshot that became the newest file in the folder.
+  "Restore the newest backup" then restored nothing while the real snapshots sat behind it, and the recovery
+  path was broken by the feature that exists to provide it. Fixed by refusing to write a snapshot that holds
+  nothing to recover: `BackupSnapshot.isEmpty` already existed for this and was never wired up.
+- **Step 24** — `AutomaticBackup` no longer takes the folder as a *trigger*. It was `combine(scripts,
+  folderUri)`, so choosing a folder scheduled a snapshot and every process start wrote one too. On the
+  device this had quietly collapsed the whole history: all ten files in the folder were byte-identical
+  apart from `createdAt`, spread over three weeks of launches, so every older state had been evicted by
+  copies of one. The folder is now read at write time and the first emission is dropped, since the library
+  as it already is, is not a change to it.
+- **Step 24** — the cost of dropping that first emission, stated because it is a real gap: an edit whose
+  5-second debounce never fires — process killed inside the window — is not in the folder until the next
+  change. The script itself is safe (the editor autosaves to the database every 500ms); it is the backup
+  copy that lags. Writing on launch to close that window is what caused the churn above, so the window
+  stays and "Back up now" covers it by hand.
+- **Step 24** — `setLastBackupAt` now runs only after the file is confirmed written. It used to be set
+  before the `Uri.EMPTY` check, so a failed write still moved the "Last backup" time the user reads — the
+  one line on the screen telling them whether they are protected, saying yes when the answer was no.
+- **Step 24** — `writeSnapshot` returns a `BackupOutcome` rather than `Long?`. "Nothing to back up" is not
+  a failure, and reporting "Could not write to the backup folder" to someone whose library is simply empty
+  would send them hunting a problem with the folder. The empty case says so, and when snapshots are sitting
+  there it points at the restore button right below.
+- **Step 24** — `chooseFolder` writes against the URI just granted rather than the one in UI state, which
+  arrives back asynchronously through DataStore and raced the write that followed it.
 - **Step 19** — the one-finger drag is **not** intercepted. `PauseOnManualScrub` listens to the list's own
   `interactionSource` for a `DragInteraction.Start` instead. Taking the drag over would mean re-implementing
   fling and over-scroll to get back what `LazyColumn` already does, and — the reason that matters — watching
