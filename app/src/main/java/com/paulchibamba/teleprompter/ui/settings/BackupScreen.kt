@@ -200,6 +200,7 @@ private fun BackupSnackbars(viewModel: BackupViewModel, snackbarHostState: Snack
         viewModel.eventStream.collect { event ->
             val message = when (event) {
                 is BackupEvent.BackupWritten -> "Backed up"
+                is BackupEvent.NothingToBackUp -> nothingToBackUpMessage(viewModel.uiState.value)
                 is BackupEvent.Restored -> restoredMessage(event)
                 is BackupEvent.Failed -> event.reason
             }
@@ -207,6 +208,17 @@ private fun BackupSnackbars(viewModel: BackupViewModel, snackbarHostState: Snack
         }
     }
 }
+
+/**
+ * Said differently depending on what is in the folder. With snapshots sitting there this is the
+ * reinstall moment, and the next thing the user needs is the restore button right below.
+ */
+private fun nothingToBackUpMessage(uiState: BackupUiState): String =
+    if (uiState.snapshots.isEmpty()) {
+        "Nothing to back up yet — there are no scripts on this phone."
+    } else {
+        "Nothing to back up yet — restore a backup to bring your scripts back."
+    }
 
 private fun restoredMessage(event: BackupEvent.Restored): String {
     val scripts = if (event.scripts == 1) "1 script" else "${event.scripts} scripts"

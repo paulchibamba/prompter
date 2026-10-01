@@ -6,15 +6,30 @@ import com.paulchibamba.teleprompter.domain.repository.ScriptRepository
 import com.paulchibamba.teleprompter.domain.usecase.CreateBackupSnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/** What came of asking for a snapshot. */
+sealed interface BackupOutcome {
+
+    data class Written(val at: Long) : BackupOutcome
+
+    /**
+     * Nothing was written, because there is nothing on the device to lose. Distinct from [Failed]:
+     * telling the user a write failed when the truth is that their library is empty would send them
+     * looking for a problem with the folder.
+     */
+    data object NothingToBackUp : BackupOutcome
+
+    data object Failed : BackupOutcome
+}
 
 /**
  * Writes a snapshot whenever the scripts change, without anyone asking (docs/BUILD_PLAN.md, "Data
@@ -39,29 +54,54 @@ class AutomaticBackup(
 
     fun start(scope: CoroutineScope) {
         scope.launch {
-            combine(
+            scripts.observeAll()
                 // Only the shape of the library matters here, not every keystroke inside a body.
-                scripts.observeAll().map { list -> list.map { it.id to it.updatedAt } }.distinctUntilChanged(),
-                preferences.state.map { it.folderUri }.distinctUntilChanged(),
-            ) { _, folderUri -> folderUri }
-                .filterNotNull()
+                .map { list -> list.map { it.id to it.updatedAt } }
+                .distinctUntilChanged()
+                // The first emission is the library as it already is, not a change to it. Writing on
+                // every launch would spend the ten-snapshot history on ten copies of one state, and
+                // push out the older ones that are the reason for keeping a history at all.
+                .drop(1)
                 .debounce(QUIET_PERIOD_MILLIS)
-                .collect { folderUri -> writeSnapshot(Uri.parse(folderUri)) }
+                .collect { backUpToChosenFolder() }
         }
     }
 
-    /** Writes one now, for the "Back up now" button. @return when it was written, or null if it failed. */
-    suspend fun writeSnapshot(treeUri: Uri): Long? {
-        if (!backupStore.canStillWriteTo(treeUri)) return null
+    /**
+     * The folder is read here rather than being a second trigger alongside the scripts. Combining
+     * the two meant *choosing* a folder also scheduled a snapshot, which on a fresh install wrote an
+     * empty one — see [writeSnapshot].
+     */
+    private suspend fun backUpToChosenFolder() {
+        val folderUri = preferences.state.first().folderUri ?: return
+        writeSnapshot(Uri.parse(folderUri))
+    }
+
+    /** Writes one now, for the "Back up now" button and for choosing a folder. */
+    suspend fun writeSnapshot(treeUri: Uri): BackupOutcome {
+        if (!backupStore.canStillWriteTo(treeUri)) return BackupOutcome.Failed
+
         val timestamp = now()
+        val snapshot = createSnapshot(timestamp)
+        // An empty snapshot is not a backup: there is nothing in it to recover, and being the newest
+        // file in the folder it is what "restore the newest backup" would offer. Writing one is at
+        // its most tempting exactly when it does the most harm — straight after a reinstall, library
+        // empty, with the real snapshots sitting right there — so recovery would be broken by the
+        // feature meant to provide it.
+        if (snapshot.isEmpty) return BackupOutcome.NothingToBackUp
+
         val written = backupStore.writeSnapshot(
             treeUri = treeUri,
-            snapshot = createSnapshot(timestamp),
+            snapshot = snapshot,
             fileName = fileNameFor(timestamp),
             keepAtMost = SNAPSHOTS_KEPT,
-        ) ?: return null
+        )
+        if (written == null || written == Uri.EMPTY) return BackupOutcome.Failed
+
+        // Only once the file is actually there. A "Last backup" time the user can read, standing for
+        // a write that did not happen, is worse than admitting there has been no backup yet.
         preferences.setLastBackupAt(timestamp)
-        return timestamp.takeIf { written != Uri.EMPTY }
+        return BackupOutcome.Written(timestamp)
     }
 
     /** Sortable and readable, so the folder reads as a history rather than a pile. */

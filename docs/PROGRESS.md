@@ -38,11 +38,11 @@ Tick a step only when it is merged to `main` with CI green. Record any deviation
 
 ## Data safety — brought forward
 
-- [ ] **Step 24** — Backup, export & import ← *next*
+- [x] **Step 24** — Backup, export & import
 
 ## Phase E — The remote
 
-- [ ] **Step 20** — Key sniffer (diagnostic)
+- [ ] **Step 20** — Key sniffer (diagnostic) ← *next*
 - [ ] **Step 21** — Remote routing, defaults & persistence
 - [ ] **Step 22** — Learn-button flow & per-device profiles
 
@@ -133,10 +133,32 @@ Deviations from [`BUILD_PLAN.md`](BUILD_PLAN.md), with the reason.
   blocks. Those blocks travel inside a snapshot, so keeping the folder among them would mean restoring a
   backup redirects where future backups go — most likely at a folder from another phone this install has no
   grant on, silently stopping automatic backup right after the user proved they needed it.
-- **Step 24** — **not yet verified on device.** The phone dropped its wireless-debug connection before the
-  test that actually matters could be run: put scripts in, uninstall, reinstall, re-pick the folder, restore,
-  and check every script comes back byte for byte. Nine unit tests cover the round trip, the merge rules and
-  the refusals, but they do not exercise SAF. Until that run happens this step is not done.
+- **Step 24** — **verified on device**, and the run found a defect that unit tests could not have: the
+  milestone failed. Choosing the folder wrote a snapshot immediately, so doing it on a fresh install — the
+  reinstall case, library empty — wrote an *empty* snapshot that became the newest file in the folder.
+  "Restore the newest backup" then restored nothing while the real snapshots sat behind it, and the recovery
+  path was broken by the feature that exists to provide it. Fixed by refusing to write a snapshot that holds
+  nothing to recover: `BackupSnapshot.isEmpty` already existed for this and was never wired up.
+- **Step 24** — `AutomaticBackup` no longer takes the folder as a *trigger*. It was `combine(scripts,
+  folderUri)`, so choosing a folder scheduled a snapshot and every process start wrote one too. On the
+  device this had quietly collapsed the whole history: all ten files in the folder were byte-identical
+  apart from `createdAt`, spread over three weeks of launches, so every older state had been evicted by
+  copies of one. The folder is now read at write time and the first emission is dropped, since the library
+  as it already is, is not a change to it.
+- **Step 24** — the cost of dropping that first emission, stated because it is a real gap: an edit whose
+  5-second debounce never fires — process killed inside the window — is not in the folder until the next
+  change. The script itself is safe (the editor autosaves to the database every 500ms); it is the backup
+  copy that lags. Writing on launch to close that window is what caused the churn above, so the window
+  stays and "Back up now" covers it by hand.
+- **Step 24** — `setLastBackupAt` now runs only after the file is confirmed written. It used to be set
+  before the `Uri.EMPTY` check, so a failed write still moved the "Last backup" time the user reads — the
+  one line on the screen telling them whether they are protected, saying yes when the answer was no.
+- **Step 24** — `writeSnapshot` returns a `BackupOutcome` rather than `Long?`. "Nothing to back up" is not
+  a failure, and reporting "Could not write to the backup folder" to someone whose library is simply empty
+  would send them hunting a problem with the folder. The empty case says so, and when snapshots are sitting
+  there it points at the restore button right below.
+- **Step 24** — `chooseFolder` writes against the URI just granted rather than the one in UI state, which
+  arrives back asynchronously through DataStore and raced the write that followed it.
 - **Step 19** — the one-finger drag is **not** intercepted. `PauseOnManualScrub` listens to the list's own
   `interactionSource` for a `DragInteraction.Start` instead. Taking the drag over would mean re-implementing
   fling and over-scroll to get back what `LazyColumn` already does, and — the reason that matters — watching

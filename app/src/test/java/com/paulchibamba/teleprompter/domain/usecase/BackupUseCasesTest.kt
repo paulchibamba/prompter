@@ -9,6 +9,7 @@ import com.paulchibamba.teleprompter.domain.model.TypographySettings
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -109,6 +110,43 @@ class BackupUseCasesTest {
         RestoreBackupSnapshot(scripts, presets, settings)(snapshot)
 
         assertEquals(BuiltInPresets.all.size, presets.observeAll().first().size)
+    }
+
+    /**
+     * The predicate the automatic backup checks before writing. A snapshot of a freshly reinstalled
+     * device holds nothing to recover, and writing it would make it the newest file in the folder —
+     * so "restore the newest backup" would restore nothing while the real snapshots sat behind it.
+     */
+    @Test
+    fun `a snapshot of a device with no scripts holds nothing worth writing`() = runTest {
+        val (scripts, presets, settings) = repositories()
+        presets.ensureBuiltIns()
+
+        val snapshot = CreateBackupSnapshot(scripts, presets, settings)(nowMillis = 0L)
+
+        assertTrue(snapshot.isEmpty)
+    }
+
+    @Test
+    fun `a snapshot is worth writing as soon as there is one script`() = runTest {
+        val (scripts, presets, settings) = repositories()
+        scripts.upsert(scriptOf(id = 1L, title = "Only one", body = "a"))
+
+        val snapshot = CreateBackupSnapshot(scripts, presets, settings)(nowMillis = 0L)
+
+        assertFalse(snapshot.isEmpty)
+    }
+
+    /** A preset the user made is their work too, even with no scripts written yet. */
+    @Test
+    fun `a snapshot is worth writing for a preset the user made`() = runTest {
+        val (scripts, presets, settings) = repositories()
+        presets.ensureBuiltIns()
+        presets.upsert(Preset(id = 9L, name = "Podcast"))
+
+        val snapshot = CreateBackupSnapshot(scripts, presets, settings)(nowMillis = 0L)
+
+        assertFalse(snapshot.isEmpty)
     }
 
     @Test

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.paulchibamba.teleprompter.data.io.AutomaticBackup
+import com.paulchibamba.teleprompter.data.io.BackupOutcome
 import com.paulchibamba.teleprompter.data.io.BackupStore
 import com.paulchibamba.teleprompter.data.io.StoredBackup
 import com.paulchibamba.teleprompter.data.prefs.BackupPreferences
@@ -34,6 +35,9 @@ data class BackupUiState(
 
 sealed interface BackupEvent {
     data class BackupWritten(val at: Long) : BackupEvent
+
+    /** Asked for a backup with an empty library — most likely straight after a reinstall. */
+    data object NothingToBackUp : BackupEvent
 
     data class Restored(val scripts: Int, val presets: Int) : BackupEvent
 
@@ -73,9 +77,12 @@ class BackupViewModel(
                 return@launch
             }
             preferences.setFolder(treeUri.toString())
-            // Write one immediately: choosing the folder is the moment the user decided their work
-            // matters, and an empty folder until the next edit would not honour that.
-            backUpNow()
+            // Written against the folder just granted rather than the one in state, which arrives
+            // back asynchronously through preferences and may not be there yet. Choosing the folder
+            // is the moment the user decided their work matters, so a snapshot now honours that —
+            // and with an empty library nothing is written, which is what leaves the snapshots
+            // already in the folder as the newest for restore to offer.
+            backUpTo(treeUri)
         }
     }
 
@@ -85,16 +92,26 @@ class BackupViewModel(
 
     fun backUpNow() {
         val folderUri = _uiState.value.folderUri ?: return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isBusy = true) }
-            val writtenAt = automaticBackup.writeSnapshot(Uri.parse(folderUri))
-            _uiState.update { it.copy(isBusy = false) }
-            if (writtenAt == null) {
-                events.send(BackupEvent.Failed("Could not write to the backup folder."))
-            } else {
-                events.send(BackupEvent.BackupWritten(writtenAt))
-                refreshSnapshots(Uri.parse(folderUri))
+        viewModelScope.launch { backUpTo(Uri.parse(folderUri)) }
+    }
+
+    private suspend fun backUpTo(treeUri: Uri) {
+        _uiState.update { it.copy(isBusy = true) }
+        val outcome = automaticBackup.writeSnapshot(treeUri)
+        _uiState.update { it.copy(isBusy = false) }
+        when (outcome) {
+            is BackupOutcome.Written -> {
+                events.send(BackupEvent.BackupWritten(outcome.at))
+                refreshSnapshots(treeUri)
             }
+            // The folder is still listed: this is the reinstall path, and what is in there is
+            // precisely what the user came to the screen for.
+            BackupOutcome.NothingToBackUp -> {
+                refreshSnapshots(treeUri)
+                events.send(BackupEvent.NothingToBackUp)
+            }
+            BackupOutcome.Failed ->
+                events.send(BackupEvent.Failed("Could not write to the backup folder."))
         }
     }
 
